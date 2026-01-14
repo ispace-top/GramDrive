@@ -193,8 +193,9 @@ async function testBot() {
     }
 }
 
-function resetConfig() {
-    if (!confirm('确定要重置所有配置吗？此操作不可撤销，并将强制退出登录。')) return;
+async function resetConfig() {
+    const confirmed = await Modal.confirm('重置配置', '确定要重置所有配置吗？此操作不可撤销，并将强制退出登录。');
+    if (!confirmed) return;
     
     fetch('/api/reset-config', { method: 'POST' })
         .then(r => r.json())

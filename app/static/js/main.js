@@ -274,11 +274,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Batch Delete
     if (batchDeleteBtn) {
-        batchDeleteBtn.addEventListener('click', () => {
+        batchDeleteBtn.addEventListener('click', async () => {
             const checked = document.querySelectorAll('.file-checkbox:checked');
             if (checked.length === 0) return;
 
-            if (!confirm(`确定要删除选中的 ${checked.length} 个文件吗？`)) return;
+            const confirmed = await Modal.confirm('批量删除', `确定要删除选中的 ${checked.length} 个文件吗？`);
+            if (!confirmed) return;
 
             const fileIds = Array.from(checked).map(cb => cb.dataset.fileId);
             
@@ -413,8 +414,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Global Helpers ---
-    window.deleteFile = (fileId) => {
-        if (!confirm('确定要删除此文件吗？')) return;
+    window.deleteFile = async (fileId) => {
+        const confirmed = await Modal.confirm('删除文件', '确定要删除此文件吗？');
+        if (!confirmed) return;
         fetch(`/api/files/${fileId}`, { method: 'DELETE' })
             .then(async (res) => {
                 let data = null;
