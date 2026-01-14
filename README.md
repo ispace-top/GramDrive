@@ -63,7 +63,8 @@ docker run -d \
   --restart always \
   -p 8000:8000 \
   -v $(pwd)/data:/app/data \
-  tgstate
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  ghcr.io/buyi06/tgstate-python:latest
 ```
 
 **✅ 部署成功后：**
@@ -73,6 +74,11 @@ docker run -d \
 > 如果 `8000` 端口已被其他程序占用，可以修改 `-p` 参数。例如改为 `15767` 端口：
 > `docker run -d --name tgstate --restart always -p 15767:8000 tgstate`
 > 此时访问地址变为：`http://您的服务器IP:15767`
+
+> **🔄 启用自动更新：**
+> 为了使用 **Settings** 页面中的 **“自动更新”** 功能，**必须**挂载 `-v /var/run/docker.sock:/var/run/docker.sock`。
+> 该功能使用 Watchtower 自动拉取最新镜像并重启容器（仅更新 tgstate 本身）。
+> 您的数据存储在 `/app/data`（即宿主机 `$(pwd)/data`），更新过程**不会丢失数据**。
 
 ---
 

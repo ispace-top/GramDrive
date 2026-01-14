@@ -27,6 +27,9 @@ def _page_cfg(request: Request) -> dict:
 
 @router.get("/welcome", response_class=HTMLResponse)
 async def welcome_page(request: Request):
+    # 如果已设置密码，禁止访问欢迎页，跳转到主页
+    if get_active_password():
+        return RedirectResponse(url="/", status_code=307)
     return templates.TemplateResponse("welcome.html", {"request": request})
 
 
@@ -39,7 +42,6 @@ async def main_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "files": files, "cfg": _page_cfg(request)})
 
 
-
 @router.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     """
@@ -48,6 +50,7 @@ async def settings_page(request: Request):
     """
     return templates.TemplateResponse("settings.html", {"request": request, "cfg": _page_cfg(request)})
 
+@router.get("/login", response_class=HTMLResponse)
 @router.get("/pwd", response_class=HTMLResponse)
 async def get_password_page(request: Request):
     """
@@ -55,18 +58,8 @@ async def get_password_page(request: Request):
     """
     return templates.TemplateResponse("pwd.html", {"request": request})
 
-@router.post("/pwd")
-async def submit_password(password: str = Form(...)):
-    """
-    处理密码提交，设置 cookie 并重定向。
-    """
-    active_password = get_active_password()
-    if password == active_password:
-        response = RedirectResponse(url="/", status_code=303)
-        response.set_cookie(key="password", value=password, httponly=True, samesite="Lax")
-        return response
-    else:
-        return RedirectResponse(url="/pwd?error=1", status_code=303)
+# 旧的 POST /pwd 已废弃，改为使用 API /api/auth/login
+
 
 @router.get("/image_hosting", response_class=HTMLResponse)
 async def image_hosting_page(request: Request):

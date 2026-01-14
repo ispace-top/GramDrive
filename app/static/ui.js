@@ -120,11 +120,40 @@ const Utils = {
     }
 };
 
+// 认证系统
+const Auth = {
+    async logout() {
+        if (!confirm('确定要退出登录吗？')) return;
+        
+        try {
+            const res = await fetch('/api/auth/logout', {
+                method: 'POST',
+                // 确保携带凭证（Cookies）
+                credentials: 'include' 
+            });
+            
+            if (res.ok) {
+                // 清理可能存在的本地状态
+                // localStorage.removeItem('some_key'); 
+                
+                // 强制跳转到登录页，并替换历史记录，防止后退
+                window.location.replace('/login');
+            } else {
+                Toast.show('退出失败，请刷新重试', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Toast.show('网络错误', 'error');
+        }
+    }
+};
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
     Theme.init();
     
     // 侧边栏/移动端菜单切换
+
     const toggleBtn = document.querySelector('.menu-toggle');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
@@ -142,4 +171,74 @@ document.addEventListener('DOMContentLoaded', () => {
             overlay.classList.remove('active');
         });
     }
+
+    // 初始化自动更新状态（如果在设置页）
+    const autoUpdateToggle = document.getElementById('auto-update-toggle');
+    if (autoUpdateToggle) {
+        fetch('/api/auto-update')
+            .then(r => r.json())
+            .then(data => {
+                const toggle = document.getElementById('auto-update-toggle');
+                const msg = document.getElementById('docker-unavailable-msg');
+                const statusText = document.getElementById('auto-update-status-text');
+                
+                if (data.available) {
+                    toggle.checked = data.enabled;
+                    toggle.disabled = false;
+                    msg.classList.add('hidden');
+                    
+                    if (statusText) {
+                        statusText.style.display = 'block';
+                        const dot = statusText.querySelector('span');
+                        if (data.enabled) {
+                            statusText.innerHTML = `<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success-color); margin-right: 6px;"></span>当前状态：已开启`;
+                        } else {
+                            statusText.innerHTML = `<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); margin-right: 6px;"></span>当前状态：未开启`;
+                        }
+                    }
+                } else {
+                    toggle.checked = false;
+                    toggle.disabled = true;
+                    msg.classList.remove('hidden');
+                }
+            });
+    }
 });
+
+// 自动更新切换逻辑
+async function toggleAutoUpdate(input) {
+    const enabled = input.checked;
+    // 乐观 UI 更新：先不改界面，等请求回来再确认，或者加 loading
+    // 这里简单处理：禁用 switch 防止连点
+    input.disabled = true;
+    
+    try {
+        const res = await fetch('/api/auto-update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ enabled: enabled })
+        });
+        const json = await res.json();
+        
+        if (res.ok) {
+            Toast.show(json.message);
+            // 更新状态文案
+            const statusText = document.getElementById('auto-update-status-text');
+            if (statusText) {
+                if (enabled) {
+                    statusText.innerHTML = `<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success-color); margin-right: 6px;"></span>当前状态：已开启`;
+                } else {
+                    statusText.innerHTML = `<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); margin-right: 6px;"></span>当前状态：未开启`;
+                }
+            }
+        } else {
+            Toast.show(json.message || '操作失败', 'error');
+            input.checked = !enabled; // 回滚状态
+        }
+    } catch (e) {
+        Toast.show('网络错误', 'error');
+        input.checked = !enabled; // 回滚状态
+    } finally {
+        input.disabled = false;
+    }
+}

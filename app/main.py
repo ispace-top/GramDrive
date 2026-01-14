@@ -25,6 +25,8 @@ app = FastAPI(
     version="2.0.0"
 )
 
+COOKIE_NAME = "tgstate_session"
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     """
@@ -34,6 +36,7 @@ async def auth_middleware(request: Request, call_next):
     request_path = request.url.path
 
     # 定义公共路径，这些路径永远不拦截
+    # /api/auth/login 用于登录，/api/auth/logout 用于登出，都应该放行
     public_paths = ["/static", "/api", "/d", "/favicon.ico"]
     is_public = any(request_path.startswith(p) for p in public_paths)
 
@@ -53,7 +56,7 @@ async def auth_middleware(request: Request, call_next):
     # 保护 API
     protected_api_paths = ("/api/upload", "/api/delete")
     if request_path in protected_api_paths:
-        session_password = request.cookies.get("password")
+        session_password = request.cookies.get(COOKIE_NAME)
         if session_password != active_password:
             return JSONResponse(
                 status_code=401,
@@ -62,13 +65,21 @@ async def auth_middleware(request: Request, call_next):
 
     # 保护页面
     # 明确列出需要登录才能访问的页面
-    protected_pages = ["/", "/image_hosting"]
-    # 允许不登录访问的页面：/pwd, /settings
+    protected_pages = ["/", "/image_hosting", "/files"]
     
+    # 登录页特殊处理：如果已登录，跳转到主页
+    if request_path == "/login" or request_path == "/pwd":
+        session_password = request.cookies.get(COOKIE_NAME)
+        if session_password == active_password:
+            return RedirectResponse(url="/", status_code=307)
+        # 未登录则允许访问登录页
+        return await call_next(request)
+
+    # 核心页面鉴权
     if request_path in protected_pages:
-        session_password = request.cookies.get("password")
+        session_password = request.cookies.get(COOKIE_NAME)
         if session_password != active_password:
-            return RedirectResponse(url="/pwd", status_code=307)
+            return RedirectResponse(url="/login", status_code=307)
 
     return await call_next(request)
 

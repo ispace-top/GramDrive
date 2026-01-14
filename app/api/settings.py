@@ -118,9 +118,11 @@ async def save_and_apply(payload: AppConfigRequest, request: Request):
     
     pwd = (merged.get("PASS_WORD") or "").strip()
     if pwd:
-        resp.set_cookie(key="password", value=pwd, httponly=True, samesite="Lax")
+        # 修改密码或保存配置时，如果涉及密码变更，更新 Cookie
+        # 统一使用 tgstate_session 名称
+        resp.set_cookie(key="tgstate_session", value=pwd, httponly=True, samesite="Lax", path="/")
     else:
-        resp.delete_cookie("password")
+        resp.delete_cookie("tgstate_session", path="/", httponly=True, samesite="Lax")
         
     return resp
 
@@ -131,7 +133,7 @@ async def reset_config(request: Request):
     await apply_runtime_settings(request.app, start_bot=True)
     logger.warning("配置已重置")
     resp = JSONResponse(status_code=200, content={"status": "ok", "message": "配置已重置"})
-    resp.delete_cookie("password")
+    resp.delete_cookie("tgstate_session", path="/", httponly=True, samesite="Lax")
     return resp
 
 
@@ -197,4 +199,55 @@ async def verify_channel(payload: VerifyRequest):
         return {"status": "ok", "available": True}
     except Exception as e:
         return {"status": "ok", "available": False, "message": str(e)}
+
+# --- Auto Update Logic ---
+
+from ..core.docker_utils import DockerManager
+
+class AutoUpdateRequest(BaseModel):
+    enabled: bool
+
+@router.get("/api/auto-update")
+async def get_auto_update_status():
+    settings = get_app_settings()
+    docker_available = DockerManager.is_available()
+    
+    # 仅当 Docker 可用时，才去检查 Watchtower 状态
+    watchtower_running = False
+    if docker_available:
+        watchtower_running = DockerManager.get_watchtower_status()
+    
+    # 数据库中的开关状态
+    db_enabled = str(settings.get("AUTO_UPDATE", "false")).lower() == "true"
+    
+    # 如果 Docker 不可用，强制视为关闭
+    if not docker_available:
+        enabled = False
+    else:
+        # 如果数据库说开启，但 Watchtower 没跑，可能是意外停止，这里以数据库意图为准
+        # 但前端 UI 可以根据 docker_available 置灰
+        enabled = db_enabled
+
+    return {
+        "status": "ok",
+        "available": docker_available, # Docker 是否可用
+        "enabled": enabled,            # 当前是否开启
+        "running": watchtower_running  # Watchtower 实际是否在跑
+    }
+
+@router.post("/api/auto-update")
+async def set_auto_update(payload: AutoUpdateRequest):
+    if not DockerManager.is_available():
+        return JSONResponse(status_code=400, content={"status": "error", "message": "Docker socket 未挂载，无法使用自动更新"})
+    
+    success = DockerManager.manage_watchtower(payload.enabled)
+    if not success:
+         return JSONResponse(status_code=500, content={"status": "error", "message": "操作 Watchtower 容器失败"})
+
+    # 保存状态到数据库
+    current = get_app_settings()
+    database.save_app_settings_to_db({**current, "AUTO_UPDATE": str(payload.enabled).lower()})
+    
+    return {"status": "ok", "message": "已开启自动更新" if payload.enabled else "已关闭自动更新"}
+
 
