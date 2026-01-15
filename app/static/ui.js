@@ -313,3 +313,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// Expose to window for inline onclick handlers
+window.Theme = Theme;
+window.Auth = Auth;
+window.Utils = Utils;
+window.Modal = Modal;
+window.Toast = Toast;

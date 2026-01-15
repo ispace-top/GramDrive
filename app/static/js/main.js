@@ -25,24 +25,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const fileId = item.dataset.fileId;
         const filename = item.dataset.filename;
         
-        // 优先使用 dataset 中的 fileUrl (如果存在且非空)
-        // 如果不存在 (如旧版渲染)，则 fallback 到构造
-        // 注意：dataset.fileUrl 可能是 undefined，如果 Jinja2 没渲染它
-        let url = item.dataset.fileUrl;
-        
-        if (!url || url === 'undefined') {
-             // Fallback construction
-             const id = (shortId && shortId !== 'None' && shortId !== '') ? shortId : fileId;
-             url = `/d/${id}`;
+        // 核心策略：优先从 DOM 中获取真实可用的绝对 URL
+        let url = '';
+
+        // 1. 尝试获取下载按钮的链接 (文件列表模式)
+        // 查找 href 以 /d/ 开头的 a 标签
+        const downloadLink = item.querySelector('a[href^="/d/"]');
+        if (downloadLink && downloadLink.href) {
+            url = downloadLink.href;
         }
         
-        // 确保是绝对路径
-        if (url.startsWith('/')) {
-            url = window.location.origin + url;
+        // 2. 尝试获取图片的 src (图床模式)
+        if (!url) {
+            const img = item.querySelector('img[src^="/d/"]');
+            if (img && img.src) {
+                url = img.src;
+            }
+        }
+
+        // 3. Fallback: 使用 dataset 中的 fileUrl (如果存在且非空且不是 undefined 字符串)
+        if (!url) {
+            const dsUrl = item.dataset.fileUrl;
+            if (dsUrl && dsUrl !== 'undefined') {
+                url = dsUrl;
+                // 确保是绝对路径
+                if (url.startsWith('/')) {
+                    url = window.location.origin + url;
+                }
+            }
+        }
+        
+        // 4. Final Fallback: 构造 /d/{id}
+        if (!url || url.includes('undefined')) {
+             const id = (shortId && shortId !== 'None' && shortId !== '') ? shortId : fileId;
+             url = window.location.origin + `/d/${id}`;
+        }
+        
+        // 安全检查：如果最终结果包含 undefined，强制重构
+        if (url.includes('undefined')) {
+            // 最后的兜底，哪怕 fileId 也是 undefined (极低概率)，也比 http://...undefined 好
+             console.warn('Constructed URL contained undefined, falling back to raw fileId');
+             url = window.location.origin + '/d/' + (fileId || 'error');
         }
 
         if (window.copyLink) {
-             // copyLink 内部也做了 fallback，但直接传完整 URL 更稳
              Utils.copy(url);
         } else {
              Utils.copy(url);
@@ -278,18 +304,39 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const links = Array.from(checked).map(cb => {
                 const item = cb.closest('.file-item, .image-card');
-                let url = item.dataset.fileUrl;
+                let url = '';
+
+                // 1. 尝试获取下载按钮
+                const downloadLink = item.querySelector('a[href^="/d/"]');
+                if (downloadLink && downloadLink.href) {
+                    url = downloadLink.href;
+                }
                 
-                // Fallback for missing dataset
-                if (!url || url === 'undefined') {
+                // 2. 尝试获取图片 src
+                if (!url) {
+                    const img = item.querySelector('img[src^="/d/"]');
+                    if (img && img.src) {
+                        url = img.src;
+                    }
+                }
+                
+                // 3. Fallback: Dataset
+                if (!url) {
+                    const dsUrl = item.dataset.fileUrl;
+                    if (dsUrl && dsUrl !== 'undefined') {
+                        url = dsUrl;
+                        if (url.startsWith('/')) {
+                            url = window.location.origin + url;
+                        }
+                    }
+                }
+                
+                // 4. Final Fallback
+                if (!url || url.includes('undefined')) {
                     const shortId = item.dataset.shortId;
                     const fileId = item.dataset.fileId;
                     const id = (shortId && shortId !== 'None' && shortId !== '') ? shortId : fileId;
-                    url = `/d/${id}`;
-                }
-                
-                if (url.startsWith('/')) {
-                    url = window.location.origin + url;
+                    url = window.location.origin + `/d/${id}`;
                 }
                 
                 const name = item.dataset.filename;
