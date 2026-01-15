@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>{% block title %}tgState{% endblock %}</title>
     <link rel="stylesheet" href="/static/ui.css">
-    <script src="/static/ui.js"></script>
     <script>
         // 防闪烁：立即应用主题
         (function() {
@@ -43,11 +42,11 @@
             </nav>
 
             <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
-                <button class="nav-item theme-toggle-btn" onclick="Theme.cycle()" style="width: 100%; text-align: left;">
+                <button type="button" class="nav-item theme-toggle-btn" style="width: 100%; text-align: left;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                     <span class="theme-label">主题切换</span>
                 </button>
-                <button onclick="Auth.logout()" class="nav-item" style="color: var(--danger-color); width: 100%; text-align: left;">
+                <button type="button" onclick="Auth.logout()" class="nav-item" style="color: var(--danger-color); width: 100%; text-align: left;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                     退出登录
                 </button>
@@ -59,7 +58,7 @@
             <!-- 移动端顶部栏 -->
             <header class="app-header">
                 <div class="logo" style="margin-bottom: 0;">tgState</div>
-                <button class="btn btn-ghost theme-toggle-btn" onclick="Theme.cycle()">
+                <button type="button" class="btn btn-ghost theme-toggle-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                 </button>
             </header>
@@ -83,5 +82,6 @@
             </a>
         </nav>
     </div>
+    <script src="/static/ui.js"></script>
 </body>
 </html>

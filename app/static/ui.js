@@ -293,6 +293,14 @@ const Theme = {
 document.addEventListener('DOMContentLoaded', () => {
     Theme.init();
     
+    // 绑定主题切换按钮点击事件
+    document.querySelectorAll('.theme-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            Theme.cycle();
+        });
+    });
+
     // 侧边栏/移动端菜单切换
 
     const toggleBtn = document.querySelector('.menu-toggle');
