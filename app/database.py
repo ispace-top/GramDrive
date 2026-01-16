@@ -4,6 +4,7 @@ import sqlite3
 import threading
 import string
 import random
+from datetime import datetime, timedelta
 
 DATA_DIR = os.getenv("DATA_DIR", "app/data")
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -70,6 +71,22 @@ def init_db() -> None:
             """)
             # 确保存在单行设置记录
             cursor.execute("INSERT OR IGNORE INTO app_settings (id) VALUES (1)")
+
+            # 创建会话表
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS sessions (
+                    session_id TEXT PRIMARY KEY,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP NOT NULL
+                );
+            """)
+
+            # 创建过期时间索引以便快速清理过期会话
+            try:
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
+            except Exception as e:
+                logger.error("Failed to create index idx_sessions_expires_at: %s", e)
+
             conn.commit()
             logger.info("数据库已成功初始化")
         finally:
@@ -260,3 +277,110 @@ def reset_app_settings_in_db() -> None:
             "BASE_URL": None,
         }
     )
+
+# ==================== 会话管理 ====================
+
+def create_session(session_id: str, expires_in_hours: int = 24) -> None:
+    """
+    创建一个新的会话。
+
+    Args:
+        session_id: 会话ID
+        expires_in_hours: 会话过期时间（小时），默认24小时
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            expires_at = datetime.now() + timedelta(hours=expires_in_hours)
+            cursor.execute(
+                "INSERT OR REPLACE INTO sessions (session_id, expires_at) VALUES (?, ?)",
+                (session_id, expires_at.isoformat())
+            )
+            conn.commit()
+            logger.info("已创建会话: %s, 过期时间: %s", session_id, expires_at)
+        finally:
+            conn.close()
+
+def get_session(session_id: str) -> dict | None:
+    """
+    获取会话信息。如果会话不存在或已过期，返回 None。
+
+    Args:
+        session_id: 会话ID
+
+    Returns:
+        会话字典（包含 session_id, created_at, expires_at）或 None
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT session_id, created_at, expires_at FROM sessions WHERE session_id = ?",
+                (session_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            # 检查会话是否过期
+            expires_at = datetime.fromisoformat(row["expires_at"])
+            if datetime.now() > expires_at:
+                # 会话已过期，删除它
+                cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+                conn.commit()
+                logger.info("会话已过期并被删除: %s", session_id)
+                return None
+
+            return {
+                "session_id": row["session_id"],
+                "created_at": row["created_at"],
+                "expires_at": row["expires_at"]
+            }
+        finally:
+            conn.close()
+
+def delete_session(session_id: str) -> bool:
+    """
+    删除指定的会话。
+
+    Args:
+        session_id: 会话ID
+
+    Returns:
+        如果成功删除了会话，返回 True，否则返回 False
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+            conn.commit()
+            deleted = cursor.rowcount > 0
+            if deleted:
+                logger.info("已删除会话: %s", session_id)
+            return deleted
+        finally:
+            conn.close()
+
+def cleanup_expired_sessions() -> int:
+    """
+    清理所有过期的会话。
+
+    Returns:
+        删除的会话数量
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            now = datetime.now().isoformat()
+            cursor.execute("DELETE FROM sessions WHERE expires_at < ?", (now,))
+            conn.commit()
+            deleted_count = cursor.rowcount
+            if deleted_count > 0:
+                logger.info("已清理 %d 个过期会话", deleted_count)
+            return deleted_count
+        finally:
+            conn.close()
