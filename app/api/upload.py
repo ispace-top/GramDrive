@@ -26,13 +26,20 @@ async def upload_file(
     request: Request,
     file: UploadFile = File(...),
     key: Optional[str] = Form(None),
+    token: Optional[str] = Form(None),
     settings: Settings = Depends(get_settings),
     x_api_key: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
 ):
     app_settings = get_app_settings()
     if not (app_settings.get("BOT_TOKEN") or "").strip() or not (app_settings.get("CHANNEL_NAME") or "").strip():
         raise http_error(503, "缺少 BOT_TOKEN 或 CHANNEL_NAME，无法上传", code="cfg_missing")
-    ensure_upload_auth(request, app_settings, x_api_key or key)
+
+    submitted_key = x_api_key or key or token
+    if not submitted_key and authorization and authorization.startswith("Bearer "):
+        submitted_key = authorization.split(" ", 1)[1]
+        
+    ensure_upload_auth(request, app_settings, submitted_key)
     logger.info("开始上传: %s", file.filename)
 
     temp_file_path = None
