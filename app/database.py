@@ -172,7 +172,7 @@ def init_db() -> None:
         finally:
             conn.close()
 
-def add_file_metadata(filename: str, file_id: str, filesize: int) -> str:
+def add_file_metadata(filename: str, file_id: str, filesize: int, mime_type: str = None) -> str:
     """
     向数据库中添加一个新的文件元数据记录。
     如果 file_id 已存在，则忽略。
@@ -182,14 +182,14 @@ def add_file_metadata(filename: str, file_id: str, filesize: int) -> str:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
-            
+
             # 尝试生成唯一的 short_id
             for _ in range(5):
                 short_id = generate_short_id()
                 try:
                     cursor.execute(
-                        "INSERT INTO files (filename, file_id, filesize, short_id) VALUES (?, ?, ?, ?)",
-                        (filename, file_id, filesize, short_id)
+                        "INSERT INTO files (filename, file_id, filesize, short_id, mime_type) VALUES (?, ?, ?, ?, ?)",
+                        (filename, file_id, filesize, short_id, mime_type)
                     )
                     conn.commit()
                     logger.info("已添加文件元数据: %s, short_id: %s", filename, short_id)
@@ -209,10 +209,10 @@ def add_file_metadata(filename: str, file_id: str, filesize: int) -> str:
                         conn.commit()
                         return short_id
                     raise e
-            
+
             # 如果多次重试失败（极低概率），抛错
             raise Exception("Failed to generate unique short_id")
-            
+
         finally:
             conn.close()
 

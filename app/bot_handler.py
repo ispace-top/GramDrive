@@ -147,7 +147,8 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             short_id = database.add_file_metadata(
                 filename=file_name,
                 file_id=composite_id,
-                filesize=file_obj.file_size
+                filesize=file_obj.file_size,
+                mime_type=mime_type
             )
 
             # 尝试自动下载文件到本地

@@ -2,6 +2,7 @@ import asyncio
 import io
 import logging
 import os
+import mimetypes
 from functools import lru_cache
 
 import telegram
@@ -106,10 +107,12 @@ class TelegramService:
                 total_size = os.path.getsize(file_path)
                 # 创建复合ID，格式为 "message_id:file_id"
                 composite_id = f"{message.message_id}:{message.document.file_id}"
+                mime_type, _ = mimetypes.guess_type(original_filename)
                 short_id = database.add_file_metadata(
                     filename=original_filename,
                     file_id=composite_id, # 我们存储复合ID
-                    filesize=total_size
+                    filesize=total_size,
+                    mime_type=mime_type
                 )
                 return short_id # 返回 short_id
         except Exception as e:
@@ -163,10 +166,12 @@ class TelegramService:
                 # 将小文件的元数据存入数据库
                 # 创建复合ID，格式为 "message_id:file_id"
                 composite_id = f"{message.message_id}:{message.document.file_id}"
+                mime_type, _ = mimetypes.guess_type(file_name)
                 short_id = database.add_file_metadata(
                     filename=file_name,
                     file_id=composite_id, # 存储复合ID
-                    filesize=file_size
+                    filesize=file_size,
+                    mime_type=mime_type
                 )
                 return short_id # 返回 short_id
         except Exception as e:
