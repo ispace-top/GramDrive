@@ -38,27 +38,70 @@ def init_db() -> None:
                     file_id TEXT NOT NULL UNIQUE,
                     filesize INTEGER NOT NULL,
                     upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    short_id TEXT UNIQUE
+                    short_id TEXT UNIQUE,
+                    local_path TEXT,
+                    download_count INTEGER DEFAULT 0,
+                    mime_type TEXT
                 );
             """)
-            
-            # 检查 short_id 列是否存在，不存在则添加 (简单的 migration)
+
+            # 检查新列是否存在，不存在则添加
             cursor.execute("PRAGMA table_info(files)")
             columns = [info[1] for info in cursor.fetchall()]
+
             if "short_id" not in columns:
                 logger.info("Migrating database: adding short_id column...")
                 try:
-                    # SQLite 不支持在 ADD COLUMN 时直接指定 UNIQUE，需拆分为两步
                     cursor.execute("ALTER TABLE files ADD COLUMN short_id TEXT")
                 except Exception as e:
                     logger.error("Migration warning: Failed to add short_id column: %s", e)
 
-            # 确保唯一索引存在（幂等操作）
+            if "local_path" not in columns:
+                logger.info("Migrating database: adding local_path column...")
+                try:
+                    cursor.execute("ALTER TABLE files ADD COLUMN local_path TEXT")
+                except Exception as e:
+                    logger.error("Migration warning: Failed to add local_path column: %s", e)
+
+            if "download_count" not in columns:
+                logger.info("Migrating database: adding download_count column...")
+                try:
+                    cursor.execute("ALTER TABLE files ADD COLUMN download_count INTEGER DEFAULT 0")
+                except Exception as e:
+                    logger.error("Migration warning: Failed to add download_count column: %s", e)
+
+            if "mime_type" not in columns:
+                logger.info("Migrating database: adding mime_type column...")
+                try:
+                    cursor.execute("ALTER TABLE files ADD COLUMN mime_type TEXT")
+                except Exception as e:
+                    logger.error("Migration warning: Failed to add mime_type column: %s", e)
+
+            # 确保唯一索引存在
             try:
                 cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_files_short_id ON files(short_id)")
             except Exception as e:
                 logger.error("Migration warning: Failed to create index idx_files_short_id: %s", e)
-            
+
+            # 创建文件标签表
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS file_tags (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_id TEXT NOT NULL,
+                    tag TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(file_id, tag),
+                    FOREIGN KEY(file_id) REFERENCES files(file_id) ON DELETE CASCADE
+                );
+            """)
+
+            # 创建标签索引以便快速查询
+            try:
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_file_tags_tag ON file_tags(tag)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_file_tags_file_id ON file_tags(file_id)")
+            except Exception as e:
+                logger.error("Failed to create tag indexes: %s", e)
+
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS app_settings (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -66,9 +109,46 @@ def init_db() -> None:
                     channel_name TEXT,
                     pass_word TEXT,
                     picgo_api_key TEXT,
-                    base_url TEXT
+                    base_url TEXT,
+                    auto_download_enabled INTEGER DEFAULT 0,
+                    download_dir TEXT DEFAULT '/app/downloads',
+                    download_file_types TEXT DEFAULT 'image,video',
+                    download_max_size INTEGER DEFAULT 52428800
                 );
             """)
+
+            # 检查app_settings新列
+            cursor.execute("PRAGMA table_info(app_settings)")
+            settings_columns = [info[1] for info in cursor.fetchall()]
+
+            if "auto_download_enabled" not in settings_columns:
+                logger.info("Adding auto_download_enabled to app_settings...")
+                try:
+                    cursor.execute("ALTER TABLE app_settings ADD COLUMN auto_download_enabled INTEGER DEFAULT 0")
+                except Exception as e:
+                    logger.error("Failed to add auto_download_enabled: %s", e)
+
+            if "download_dir" not in settings_columns:
+                logger.info("Adding download_dir to app_settings...")
+                try:
+                    cursor.execute("ALTER TABLE app_settings ADD COLUMN download_dir TEXT DEFAULT '/app/downloads'")
+                except Exception as e:
+                    logger.error("Failed to add download_dir: %s", e)
+
+            if "download_file_types" not in settings_columns:
+                logger.info("Adding download_file_types to app_settings...")
+                try:
+                    cursor.execute("ALTER TABLE app_settings ADD COLUMN download_file_types TEXT DEFAULT 'image,video'")
+                except Exception as e:
+                    logger.error("Failed to add download_file_types: %s", e)
+
+            if "download_max_size" not in settings_columns:
+                logger.info("Adding download_max_size to app_settings...")
+                try:
+                    cursor.execute("ALTER TABLE app_settings ADD COLUMN download_max_size INTEGER DEFAULT 52428800")
+                except Exception as e:
+                    logger.error("Failed to add download_max_size: %s", e)
+
             # 确保存在单行设置记录
             cursor.execute("INSERT OR IGNORE INTO app_settings (id) VALUES (1)")
 
@@ -220,7 +300,11 @@ def get_app_settings_from_db() -> dict:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT bot_token, channel_name, pass_word, picgo_api_key, base_url FROM app_settings WHERE id = 1")
+            cursor.execute("""
+                SELECT bot_token, channel_name, pass_word, picgo_api_key, base_url,
+                       auto_download_enabled, download_dir, download_file_types, download_max_size
+                FROM app_settings WHERE id = 1
+            """)
             row = cursor.fetchone()
             if not row:
                 return {}
@@ -230,6 +314,10 @@ def get_app_settings_from_db() -> dict:
                 "PASS_WORD": row[2],
                 "PICGO_API_KEY": row[3],
                 "BASE_URL": row[4],
+                "AUTO_DOWNLOAD_ENABLED": bool(row[5]) if row[5] is not None else False,
+                "DOWNLOAD_DIR": row[6] or "/app/downloads",
+                "DOWNLOAD_FILE_TYPES": row[7] or "image,video",
+                "DOWNLOAD_MAX_SIZE": row[8] or 52428800,
             }
         finally:
             conn.close()
@@ -251,7 +339,8 @@ def save_app_settings_to_db(payload: dict) -> None:
             cursor.execute(
                 """
                 UPDATE app_settings
-                SET bot_token = ?, channel_name = ?, pass_word = ?, picgo_api_key = ?, base_url = ?
+                SET bot_token = ?, channel_name = ?, pass_word = ?, picgo_api_key = ?, base_url = ?,
+                    auto_download_enabled = ?, download_dir = ?, download_file_types = ?, download_max_size = ?
                 WHERE id = 1
                 """,
                 (
@@ -260,6 +349,10 @@ def save_app_settings_to_db(payload: dict) -> None:
                     norm(payload.get("PASS_WORD")),
                     norm(payload.get("PICGO_API_KEY")),
                     norm(payload.get("BASE_URL")),
+                    1 if payload.get("AUTO_DOWNLOAD_ENABLED") else 0,
+                    norm(payload.get("DOWNLOAD_DIR")) or "/app/downloads",
+                    norm(payload.get("DOWNLOAD_FILE_TYPES")) or "image,video",
+                    payload.get("DOWNLOAD_MAX_SIZE") or 52428800,
                 )
             )
             conn.commit()
@@ -275,6 +368,10 @@ def reset_app_settings_in_db() -> None:
             "PASS_WORD": None,
             "PICGO_API_KEY": None,
             "BASE_URL": None,
+            "AUTO_DOWNLOAD_ENABLED": False,
+            "DOWNLOAD_DIR": "/app/downloads",
+            "DOWNLOAD_FILE_TYPES": "image,video",
+            "DOWNLOAD_MAX_SIZE": 52428800,
         }
     )
 
@@ -384,3 +481,304 @@ def cleanup_expired_sessions() -> int:
             return deleted_count
         finally:
             conn.close()
+
+# ==================== 标签管理 ====================
+
+def add_file_tag(file_id: str, tag: str) -> bool:
+    """
+    为文件添加标签。
+
+    Args:
+        file_id: 文件ID
+        tag: 标签名称
+
+    Returns:
+        是否成功添加
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    "INSERT INTO file_tags (file_id, tag) VALUES (?, ?)",
+                    (file_id, tag.strip().lower())
+                )
+                conn.commit()
+                logger.info("为文件 %s 添加标签: %s", file_id, tag)
+                return True
+            except sqlite3.IntegrityError:
+                logger.warning("标签已存在: %s -> %s", file_id, tag)
+                return False
+        finally:
+            conn.close()
+
+def remove_file_tag(file_id: str, tag: str) -> bool:
+    """
+    移除文件的标签。
+
+    Args:
+        file_id: 文件ID
+        tag: 标签名称
+
+    Returns:
+        是否成功移除
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM file_tags WHERE file_id = ? AND tag = ?",
+                (file_id, tag.strip().lower())
+            )
+            conn.commit()
+            deleted = cursor.rowcount > 0
+            if deleted:
+                logger.info("移除文件标签: %s -> %s", file_id, tag)
+            return deleted
+        finally:
+            conn.close()
+
+def get_file_tags(file_id: str) -> list[str]:
+    """
+    获取文件的所有标签。
+
+    Args:
+        file_id: 文件ID
+
+    Returns:
+        标签列表
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT tag FROM file_tags WHERE file_id = ? ORDER BY created_at",
+                (file_id,)
+            )
+            return [row[0] for row in cursor.fetchall()]
+        finally:
+            conn.close()
+
+def get_all_tags() -> list[dict]:
+    """
+    获取所有标签及其使用次数。
+
+    Returns:
+        [{"tag": "标签名", "count": 使用次数}, ...]
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT tag, COUNT(*) as count
+                FROM file_tags
+                GROUP BY tag
+                ORDER BY count DESC, tag ASC
+            """)
+            return [{"tag": row[0], "count": row[1]} for row in cursor.fetchall()]
+        finally:
+            conn.close()
+
+def get_files_by_tag(tag: str) -> list[str]:
+    """
+    根据标签查询文件ID列表。
+
+    Args:
+        tag: 标签名称
+
+    Returns:
+        文件ID列表
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT file_id FROM file_tags WHERE tag = ? ORDER BY created_at DESC",
+                (tag.strip().lower(),)
+            )
+            return [row[0] for row in cursor.fetchall()]
+        finally:
+            conn.close()
+
+# ==================== 本地文件管理 ====================
+
+def update_local_path(file_id: str, local_path: str) -> bool:
+    """
+    更新文件的本地路径。
+
+    Args:
+        file_id: 文件ID
+        local_path: 本地文件路径
+
+    Returns:
+        是否成功更新
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE files SET local_path = ? WHERE file_id = ?",
+                (local_path, file_id)
+            )
+            conn.commit()
+            updated = cursor.rowcount > 0
+            if updated:
+                logger.info("更新文件本地路径: %s -> %s", file_id, local_path)
+            return updated
+        finally:
+            conn.close()
+
+def get_local_files() -> list[dict]:
+    """
+    获取所有已下载到本地的文件。
+
+    Returns:
+        文件列表
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT filename, file_id, filesize, upload_date, short_id, local_path
+                FROM files
+                WHERE local_path IS NOT NULL AND local_path != ''
+                ORDER BY upload_date DESC
+            """)
+            files = []
+            for row in cursor.fetchall():
+                files.append({
+                    "filename": row["filename"],
+                    "file_id": row["file_id"],
+                    "filesize": row["filesize"],
+                    "upload_date": row["upload_date"],
+                    "short_id": row["short_id"],
+                    "local_path": row["local_path"]
+                })
+            return files
+        finally:
+            conn.close()
+
+# ==================== 下载统计 ====================
+
+def increment_download_count(file_id: str) -> bool:
+    """
+    增加文件的下载计数。
+
+    Args:
+        file_id: 文件ID
+
+    Returns:
+        是否成功更新
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE files SET download_count = download_count + 1 WHERE file_id = ?",
+                (file_id,)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+
+# ==================== 统计查询 ====================
+
+def get_statistics() -> dict:
+    """
+    获取系统统计信息。
+
+    Returns:
+        统计数据字典
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+
+            # 总文件数和总大小
+            cursor.execute("SELECT COUNT(*), COALESCE(SUM(filesize), 0) FROM files")
+            row = cursor.fetchone()
+            total_files = row[0]
+            total_size = row[1]
+
+            # 按MIME类型分类统计
+            cursor.execute("""
+                SELECT
+                    CASE
+                        WHEN mime_type LIKE 'image/%' THEN 'image'
+                        WHEN mime_type LIKE 'video/%' THEN 'video'
+                        WHEN mime_type LIKE 'audio/%' THEN 'audio'
+                        WHEN mime_type LIKE 'application/pdf' THEN 'pdf'
+                        WHEN mime_type LIKE 'text/%' THEN 'text'
+                        ELSE 'other'
+                    END as type,
+                    COUNT(*) as count,
+                    COALESCE(SUM(filesize), 0) as size
+                FROM files
+                WHERE mime_type IS NOT NULL
+                GROUP BY type
+            """)
+            by_type = {}
+            for row in cursor.fetchall():
+                by_type[row[0]] = {"count": row[1], "size": row[2]}
+
+            # 最近7天上传趋势
+            cursor.execute("""
+                SELECT DATE(upload_date) as date, COUNT(*) as count
+                FROM files
+                WHERE upload_date >= datetime('now', '-7 days')
+                GROUP BY DATE(upload_date)
+                ORDER BY date DESC
+            """)
+            recent_uploads = [
+                {"date": row[0], "count": row[1]}
+                for row in cursor.fetchall()
+            ]
+
+            # Top 10 下载文件
+            cursor.execute("""
+                SELECT filename, file_id, short_id, download_count, filesize
+                FROM files
+                WHERE download_count > 0
+                ORDER BY download_count DESC
+                LIMIT 10
+            """)
+            top_downloads = []
+            for row in cursor.fetchall():
+                top_downloads.append({
+                    "filename": row[0],
+                    "file_id": row[1],
+                    "short_id": row[2],
+                    "download_count": row[3],
+                    "filesize": row[4]
+                })
+
+            # 本地已下载文件数
+            cursor.execute("SELECT COUNT(*) FROM files WHERE local_path IS NOT NULL AND local_path != ''")
+            local_files_count = cursor.fetchone()[0]
+
+            # 标签总数
+            cursor.execute("SELECT COUNT(DISTINCT tag) FROM file_tags")
+            total_tags = cursor.fetchone()[0]
+
+            return {
+                "total_files": total_files,
+                "total_size": total_size,
+                "by_type": by_type,
+                "recent_uploads": recent_uploads,
+                "top_downloads": top_downloads,
+                "local_files_count": local_files_count,
+                "total_tags": total_tags
+            }
+        finally:
+            conn.close()
+
