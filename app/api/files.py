@@ -216,6 +216,10 @@ async def download_file_legacy(
     except Exception:
         raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，下载不可用", code="cfg_missing")
 
+    # 增加下载计数（仅GET请求）
+    if request.method == "GET":
+        database.increment_download_count(file_id)
+
     force_download = download == "1" or download == "true"
     return await serve_file(file_id, filename, telegram_service, client, request, force_download)
 
@@ -239,6 +243,10 @@ async def download_file_short(
     meta = database.get_file_by_id(identifier)
     if not meta:
          raise http_error(404, "文件不存在", code="file_not_found")
+
+    # 增加下载计数（仅GET请求）
+    if request.method == "GET":
+        database.increment_download_count(meta['file_id'])
 
     force_download = download == "1" or download == "true"
     return await serve_file(meta['file_id'], meta['filename'], telegram_service, client, request, force_download)

@@ -1,7 +1,10 @@
 import logging
 import json
-from datetime import timezone
+import os
+import mimetypes
+from datetime import timezone, datetime
 from urllib.parse import quote
+from pathlib import Path
 
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
@@ -17,6 +20,76 @@ def _get_bot_settings(context: ContextTypes.DEFAULT_TYPE) -> dict:
         return dict(context.application.bot_data.get("settings") or {})
     except Exception:
         return {}
+
+
+async def _auto_download_file(file_obj, file_name: str, composite_id: str, settings: dict) -> str | None:
+    """
+    自动下载文件到本地目录（如果启用）。
+
+    Args:
+        file_obj: Telegram文件对象
+        file_name: 文件名
+        composite_id: 复合文件ID
+        settings: 应用设置
+
+    Returns:
+        本地文件路径，如果未下载则返回None
+    """
+    # 检查是否启用自动下载
+    if not settings.get("AUTO_DOWNLOAD_ENABLED"):
+        return None
+
+    # 检查文件大小限制
+    max_size = settings.get("DOWNLOAD_MAX_SIZE", 52428800)
+    if file_obj.file_size > max_size:
+        logger.info(f"文件 {file_name} 大小 {file_obj.file_size} 超过限制 {max_size}，跳过自动下载")
+        return None
+
+    # 检查文件类型过滤
+    allowed_types = settings.get("DOWNLOAD_FILE_TYPES", "image,video").split(",")
+    allowed_types = [t.strip().lower() for t in allowed_types if t.strip()]
+
+    mime_type, _ = mimetypes.guess_type(file_name)
+    if mime_type:
+        file_category = mime_type.split("/")[0]
+        if file_category not in allowed_types:
+            logger.info(f"文件 {file_name} 类型 {file_category} 不在允许列表中，跳过自动下载")
+            return None
+    else:
+        logger.info(f"无法识别文件 {file_name} 的MIME类型，跳过自动下载")
+        return None
+
+    # 构建本地存储路径：/download_dir/YYYY-MM-DD/type/filename
+    download_dir = settings.get("DOWNLOAD_DIR", "/app/downloads")
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    category_dir = file_category
+
+    local_dir = Path(download_dir) / date_str / category_dir
+    local_dir.mkdir(parents=True, exist_ok=True)
+
+    # 处理文件名冲突（添加时间戳后缀）
+    local_path = local_dir / file_name
+    if local_path.exists():
+        name_parts = file_name.rsplit(".", 1)
+        if len(name_parts) == 2:
+            base_name, ext = name_parts
+            timestamp = datetime.now().strftime("%H%M%S")
+            file_name = f"{base_name}_{timestamp}.{ext}"
+        else:
+            timestamp = datetime.now().strftime("%H%M%S")
+            file_name = f"{file_name}_{timestamp}"
+        local_path = local_dir / file_name
+
+    # 下载文件
+    try:
+        telegram_service = get_telegram_service()
+        file = await telegram_service.bot.get_file(file_obj.file_id)
+        await file.download_to_drive(str(local_path))
+        logger.info(f"已自动下载文件 {file_name} 到 {local_path}")
+        return str(local_path)
+    except Exception as e:
+        logger.error(f"自动下载文件 {file_name} 失败: {e}")
+        return None
 
 async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -67,13 +140,22 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if file_obj.file_size < (20 * 1024 * 1024) and not file_name.endswith(".manifest"):
             # 使用复合ID "message_id:file_id"
             composite_id = f"{message.message_id}:{file_obj.file_id}"
-            
+
+            # 获取MIME类型
+            mime_type, _ = mimetypes.guess_type(file_name)
+
             short_id = database.add_file_metadata(
                 filename=file_name,
                 file_id=composite_id,
                 filesize=file_obj.file_size
             )
-            
+
+            # 尝试自动下载文件到本地
+            local_path = await _auto_download_file(file_obj, file_name, composite_id, settings)
+            if local_path:
+                database.update_local_path(composite_id, local_path)
+                logger.info(f"文件 {file_name} 已自动下载到 {local_path}")
+
             upload_date = message.date.astimezone(timezone.utc).isoformat()
             file_event = build_file_event(
                 action="add",
