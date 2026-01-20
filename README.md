@@ -1,4 +1,9 @@
-# tgstate-python
+# TgCloud
+
+[![Docker Hub](https://img.shields.io/docker/v/wapedkj/tgcloud?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/wapedkj/tgcloud)
+[![Docker Pulls](https://img.shields.io/docker/pulls/wapedkj/tgcloud?logo=docker)](https://hub.docker.com/r/wapedkj/tgcloud)
+[![GitHub Release](https://img.shields.io/github/v/release/ispace-top/tgstate-python?label=Release&logo=github)](https://github.com/ispace-top/tgstate-python/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **基于 Telegram 的无限私有云存储 & 永久图床系统**
 
@@ -10,18 +15,18 @@
 
 默认端口 **8000**（最通用）
 ```bash
-docker volume create tgstate-data >/dev/null 2>&1; docker rm -f tgstate >/dev/null 2>&1 || true; docker pull ghcr.io/buyi06/tgstate-python:latest && docker run -d --name tgstate --restart unless-stopped -p 8000:8000 -v tgstate-data:/app/data ghcr.io/buyi06/tgstate-python:latest
+docker volume create tgcloud-data >/dev/null 2>&1; docker rm -f tgcloud >/dev/null 2>&1 || true; docker pull wapedkj/tgcloud:latest && docker run -d --name tgcloud --restart unless-stopped -p 8000:8000 -v tgcloud-data:/app/data wapedkj/tgcloud:latest
 ```
 
 自定义端口 **15767**（可选）
 ```bash
-docker volume create tgstate-data >/dev/null 2>&1; docker rm -f tgstate >/dev/null 2>&1 || true; docker pull ghcr.io/buyi06/tgstate-python:latest && docker run -d --name tgstate --restart unless-stopped -p 15767:8000 -v tgstate-data:/app/data ghcr.io/buyi06/tgstate-python:latest
+docker volume create tgcloud-data >/dev/null 2>&1; docker rm -f tgcloud >/dev/null 2>&1 || true; docker pull wapedkj/tgcloud:latest && docker run -d --name tgcloud --restart unless-stopped -p 15767:8000 -v tgcloud-data:/app/data wapedkj/tgcloud:latest
 ```
 
 ## 🧨 彻底重装（清空所有数据，不可逆）
 
 ```bash
-docker rm -f tgstate >/dev/null 2>&1 || true; docker volume rm tgstate-data >/dev/null 2>&1 || true; docker volume create tgstate-data >/dev/null 2>&1; docker pull ghcr.io/buyi06/tgstate-python:latest && docker run -d --name tgstate --restart unless-stopped -p 15767:8000 -v tgstate-data:/app/data ghcr.io/buyi06/tgstate-python:latest
+docker rm -f tgcloud >/dev/null 2>&1 || true; docker volume rm tgcloud-data >/dev/null 2>&1 || true; docker volume create tgcloud-data >/dev/null 2>&1; docker pull wapedkj/tgcloud:latest && docker run -d --name tgcloud --restart unless-stopped -p 15767:8000 -v tgcloud-data:/app/data wapedkj/tgcloud:latest
 ```
 
 ---
@@ -202,6 +207,21 @@ curl -sS -L -D - -o /dev/null --max-time 20 -H "Range: bytes=0-1023" "$FINAL" | 
 
 使用本项目产生的任何后果由使用者自行承担；开发者不对由此造成的封号、数据丢失、法律风险等负责。
 
+---
+
+## 🙏 致谢
+
+本项目基于 [buyi06/tgstate-python](https://github.com/buyi06/tgstate-python) 进行二次开发和改进。
+
+感谢原作者 [@buyi06](https://github.com/buyi06) 提供的优秀开源项目！
+
+**主要改进：**
+- 修复了文件上传认证bug（session验证逻辑错误）
+- 优化项目结构和配置
+- 改进Docker部署方式
+- 持续维护和功能增强
+
+---
 
 ## 📄 License
 MIT License

@@ -5,6 +5,7 @@ from fastapi import HTTPException, Request
 from typing import Any
 
 from ..core.config import get_active_password
+from .. import database
 
 logger = logging.getLogger(__name__)
 
@@ -47,16 +48,17 @@ def ensure_upload_auth(request: Request, app_settings: dict, submitted_key: str 
     if not picgo_api_key and active_password:
         if not web_request:
             return
-        # Fix: use correct cookie name
-        session_password = request.cookies.get(COOKIE_NAME)
-        if active_password == session_password:
+        # 验证 session 是否有效
+        session_id = request.cookies.get(COOKIE_NAME)
+        if session_id and database.get_session(session_id):
             return
         logger.warning("Web 上传鉴权失败：需要登录")
         raise http_error(401, "需要网页登录", code="login_required")
 
     if web_request:
-        session_password = request.cookies.get(COOKIE_NAME)
-        if active_password == session_password:
+        # 验证 session 是否有效
+        session_id = request.cookies.get(COOKIE_NAME)
+        if session_id and database.get_session(session_id):
             return
         logger.warning("Web 上传鉴权失败：需要登录")
         raise http_error(401, "需要网页登录", code="login_required")

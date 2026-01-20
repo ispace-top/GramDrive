@@ -1,7 +1,7 @@
 [project]
-name = "tgstate-python"
+name = "tgcloud"
 version = "2.0.0"
-description = "A Telegram-based private file storage system"
+description = "TgCloud - A Telegram-based private cloud storage system"
 requires-python = ">=3.11"
 
 [tool.ruff]

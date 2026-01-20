@@ -1,15 +1,15 @@
 services:
-  tgstate:
+  tgcloud:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tgstate
+    container_name: tgcloud
     restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
       # 持久化数据目录
-      - tgstate-data:/app/data
+      - tgcloud-data:/app/data
     environment:
       # 从 .env 文件加载环境变量
       - BOT_TOKEN=${BOT_TOKEN:-}
@@ -26,12 +26,12 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - tgstate-network
+      - tgcloud-network
 
 volumes:
-  tgstate-data:
+  tgcloud-data:
     driver: local
 
 networks:
-  tgstate-network:
+  tgcloud-network:
     driver: bridge

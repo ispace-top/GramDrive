@@ -33,7 +33,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ secrets.DOCKER_USERNAME }}/tgstate
+          images: ${{ secrets.DOCKER_USERNAME }}/tgcloud
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and push multi-platform Docker image
         uses: docker/build-push-action@v4

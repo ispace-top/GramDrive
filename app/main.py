@@ -21,7 +21,7 @@ logging.basicConfig(
 # 使用集成的 lifespan 管理器创建 FastAPI 应用
 app = FastAPI(
     lifespan=lifespan,
-    title="tgState",
+    title="TgCloud",
     description="一个基于 Telegram 的私有文件存储系统。",
     version="2.0.0"
 )
