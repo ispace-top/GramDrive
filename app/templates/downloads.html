@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+
+{% block title %}下载管理 - tgState{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>下载管理</h1>
+        <p class="text-muted">管理自动下载设置和本地文件</p>
+    </div>
+
+    <!-- 自动下载配置 -->
+    <div class="card">
+        <div class="card-header">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">自动下载配置</h2>
+        </div>
+        <div class="card-body">
+            <form id="autoDownloadForm">
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="autoDownloadEnabled" style="margin-right: 8px;">
+                        启用自动下载
+                    </label>
+                    <p class="form-hint">自动下载频道中的文件到本地存储</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">文件类型</label>
+                    <div style="display: flex; gap: 16px; margin-top: 8px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" value="image" class="fileTypeCheckbox" style="margin-right: 6px;">
+                            图片
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" value="video" class="fileTypeCheckbox" style="margin-right: 6px;">
+                            视频
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" value="audio" class="fileTypeCheckbox" style="margin-right: 6px;">
+                            音频
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" value="document" class="fileTypeCheckbox" style="margin-right: 6px;">
+                            文档
+                        </label>
+                    </div>
+                    <p class="form-hint">选择要自动下载的文件类型</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="maxSize">最大文件大小 (MB)</label>
+                    <input type="number" id="maxSize" class="form-input" min="1" max="2000" step="1" placeholder="50">
+                    <p class="form-hint">超过此大小的文件将不会自动下载</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="downloadDir">下载目录</label>
+                    <input type="text" id="downloadDir" class="form-input" placeholder="/app/downloads">
+                    <p class="form-hint">文件将保存到此目录，按日期和类型自动分类</p>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button type="submit" class="btn btn-primary">保存配置</button>
+                    <button type="button" class="btn btn-secondary" onclick="loadConfig()">重置</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 本地文件统计 -->
+    <div class="card" style="margin-top: 24px;">
+        <div class="card-header">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">本地存储统计</h2>
+        </div>
+        <div class="card-body">
+            <div id="localStatsLoading" style="text-align: center; padding: 20px;">加载中...</div>
+            <div id="localStatsContent" style="display: none;">
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <div class="stat-label">已下载文件</div>
+                        <div class="stat-value" id="localTotalCount">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">占用空间</div>
+                        <div class="stat-value" id="localTotalSize">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">有效文件</div>
+                        <div class="stat-value" id="localExistsCount">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">缺失文件</div>
+                        <div class="stat-value" id="localMissingCount">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 本地文件列表 -->
+    <div class="card" style="margin-top: 24px;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">本地文件列表</h2>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="refreshLocalFiles()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                刷新
+            </button>
+        </div>
+        <div class="card-body">
+            <div id="localFilesLoading" style="text-align: center; padding: 20px;">加载中...</div>
+            <div id="localFilesList" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 16px;
+    background: var(--hover-bg);
+    border-radius: 8px;
+}
+
+.stat-item .stat-label {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.stat-item .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.local-file-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.local-file-item:last-child {
+    border-bottom: none;
+}
+
+.local-file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.local-file-name {
+    font-weight: 600;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.local-file-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.local-file-status {
+    margin-right: 12px;
+    font-size: 20px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 14px;
+}
+</style>
+
+<script>
+async function loadConfig() {
+    try {
+        const response = await fetch('/api/downloads/config');
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            const config = result.data;
+            document.getElementById('autoDownloadEnabled').checked = config.enabled;
+            document.getElementById('maxSize').value = Math.round(config.max_size / 1024 / 1024);
+            document.getElementById('downloadDir').value = config.download_dir;
+
+            // 设置文件类型复选框
+            const fileTypes = config.file_types.split(',').map(t => t.trim());
+            document.querySelectorAll('.fileTypeCheckbox').forEach(checkbox => {
+                checkbox.checked = fileTypes.includes(checkbox.value);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load config:', error);
+        showToast('加载配置失败', 'error');
+    }
+}
+
+async function loadLocalStats() {
+    try {
+        const response = await fetch('/api/downloads/stats');
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            const data = result.data;
+            document.getElementById('localTotalCount').textContent = data.total_count.toLocaleString();
+            document.getElementById('localTotalSize').textContent = data.total_size_formatted;
+            document.getElementById('localExistsCount').textContent = data.exists_count.toLocaleString();
+            document.getElementById('localMissingCount').textContent = data.missing_count.toLocaleString();
+
+            document.getElementById('localStatsLoading').style.display = 'none';
+            document.getElementById('localStatsContent').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Failed to load local stats:', error);
+    }
+}
+
+async function loadLocalFiles() {
+    try {
+        const response = await fetch('/api/downloads/local-files');
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            const files = result.data;
+
+            if (files.length === 0) {
+                document.getElementById('localFilesList').innerHTML = '<p class="text-muted" style="text-align: center; padding: 20px;">暂无本地文件</p>';
+            } else {
+                const html = files.map(file => `
+                    <div class="local-file-item">
+                        <div class="local-file-status">${file.exists ? '✅' : '❌'}</div>
+                        <div class="local-file-info">
+                            <div class="local-file-name" title="${file.filename}">${file.filename}</div>
+                            <div class="local-file-meta">
+                                ${file.local_path}
+                                ${file.exists ? '· ' + formatBytes(file.actual_size) : ''}
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteLocalFile('${file.file_id}')">删除</button>
+                    </div>
+                `).join('');
+
+                document.getElementById('localFilesList').innerHTML = html;
+            }
+
+            document.getElementById('localFilesLoading').style.display = 'none';
+            document.getElementById('localFilesList').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Failed to load local files:', error);
+    }
+}
+
+async function deleteLocalFile(fileId) {
+    if (!confirm('确定要删除本地文件吗？Telegram中的文件不会被删除。')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/downloads/local-file', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_id: fileId })
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            showToast('本地文件已删除', 'success');
+            refreshLocalFiles();
+        } else {
+            showToast('删除失败', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to delete local file:', error);
+        showToast('删除失败', 'error');
+    }
+}
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+}
+
+function refreshLocalFiles() {
+    document.getElementById('localFilesLoading').style.display = 'block';
+    document.getElementById('localFilesList').style.display = 'none';
+    loadLocalStats();
+    loadLocalFiles();
+}
+
+document.getElementById('autoDownloadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const enabled = document.getElementById('autoDownloadEnabled').checked;
+    const maxSizeMB = parseInt(document.getElementById('maxSize').value) || 50;
+    const downloadDir = document.getElementById('downloadDir').value || '/app/downloads';
+
+    const selectedTypes = Array.from(document.querySelectorAll('.fileTypeCheckbox:checked'))
+        .map(cb => cb.value)
+        .join(',');
+
+    try {
+        const response = await fetch('/api/downloads/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                enabled: enabled,
+                max_size: maxSizeMB * 1024 * 1024,
+                file_types: selectedTypes,
+                download_dir: downloadDir
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            showToast('配置已保存', 'success');
+        } else {
+            showToast('保存失败', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to save config:', error);
+        showToast('保存失败', 'error');
+    }
+});
+
+function showToast(message, type) {
+    alert(message);
+}
+
+// 页面加载时初始化
+loadConfig();
+loadLocalStats();
+loadLocalFiles();
+</script>
+{% endblock %}

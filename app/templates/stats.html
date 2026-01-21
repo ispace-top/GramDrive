@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}统计仪表板 - tgState{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>统计仪表板</h1>
+        <p class="text-muted">查看存储空间使用情况和文件统计信息</p>
+    </div>
+
+    <div id="statsLoading" class="card" style="text-align: center; padding: 40px;">
+        <div style="margin-bottom: 16px;">加载中...</div>
+    </div>
+
+    <div id="statsContent" style="display: none;">
+        <!-- 总体统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                        <polyline points="13 2 13 9 20 9"></polyline>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">总文件数</div>
+                    <div class="stat-value" id="totalCount">-</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">总存储空间</div>
+                    <div class="stat-value" id="totalSize">-</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">总下载次数</div>
+                    <div class="stat-value" id="totalDownloads">-</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">平均文件大小</div>
+                    <div class="stat-value" id="avgSize">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文件类型分布 -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h2 style="margin: 0; font-size: 18px; font-weight: 600;">文件类型分布</h2>
+            </div>
+            <div class="card-body">
+                <div id="fileTypesList"></div>
+            </div>
+        </div>
+
+        <!-- 热门文件 -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                <h2 style="margin: 0; font-size: 18px; font-weight: 600;">热门文件 (下载次数最多)</h2>
+            </div>
+            <div class="card-body">
+                <div id="popularFilesList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon svg {
+    width: 28px;
+    height: 28px;
+    stroke: white;
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.file-type-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.file-type-item:last-child {
+    border-bottom: none;
+}
+
+.file-type-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    font-size: 20px;
+}
+
+.file-type-info {
+    flex: 1;
+}
+
+.file-type-name {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.file-type-stats {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.popular-file-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: var(--hover-bg);
+    transition: background 0.2s;
+}
+
+.popular-file-item:hover {
+    background: var(--border-color);
+}
+
+.popular-file-rank {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.popular-file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.popular-file-name {
+    font-weight: 600;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.popular-file-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.popular-file-downloads {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 18px;
+}
+</style>
+
+<script>
+async function loadStats() {
+    try {
+        const response = await fetch('/api/stats/dashboard');
+        const result = await response.json();
+
+        if (result.status !== 'success') {
+            throw new Error('Failed to load statistics');
+        }
+
+        const data = result.data;
+
+        // 更新总体统计
+        document.getElementById('totalCount').textContent = data.total_count.toLocaleString();
+        document.getElementById('totalSize').textContent = data.total_size_formatted;
+        document.getElementById('totalDownloads').textContent = data.total_downloads.toLocaleString();
+        document.getElementById('avgSize').textContent = data.avg_size_formatted;
+
+        // 文件类型分布
+        const fileTypesHtml = data.file_types.map(type => {
+            const icons = {
+                'image': '🖼️',
+                'video': '🎬',
+                'audio': '🎵',
+                'document': '📄',
+                'archive': '📦',
+                'other': '📁'
+            };
+
+            const colors = {
+                'image': '#667eea',
+                'video': '#f093fb',
+                'audio': '#4facfe',
+                'document': '#fa709a',
+                'archive': '#f6d365',
+                'other': '#a8edea'
+            };
+
+            return `
+                <div class="file-type-item">
+                    <div class="file-type-icon" style="background: ${colors[type.type] || colors.other}33;">
+                        ${icons[type.type] || icons.other}
+                    </div>
+                    <div class="file-type-info">
+                        <div class="file-type-name">${type.type_label}</div>
+                        <div class="file-type-stats">${type.count} 个文件 · ${type.size_formatted}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('fileTypesList').innerHTML = fileTypesHtml || '<p class="text-muted">暂无数据</p>';
+
+        // 热门文件
+        const popularFilesHtml = data.popular_files.slice(0, 10).map((file, index) => `
+            <div class="popular-file-item">
+                <div class="popular-file-rank" style="background: ${index < 3 ? '#f5576c' : '#667eea'}">
+                    ${index + 1}
+                </div>
+                <div class="popular-file-info">
+                    <div class="popular-file-name" title="${file.filename}">${file.filename}</div>
+                    <div class="popular-file-meta">${file.filesize_formatted}</div>
+                </div>
+                <div class="popular-file-downloads">${file.download_count}</div>
+            </div>
+        `).join('');
+
+        document.getElementById('popularFilesList').innerHTML = popularFilesHtml || '<p class="text-muted">暂无数据</p>';
+
+        // 显示内容
+        document.getElementById('statsLoading').style.display = 'none';
+        document.getElementById('statsContent').style.display = 'block';
+
+    } catch (error) {
+        console.error('Failed to load stats:', error);
+        document.getElementById('statsLoading').innerHTML = `
+            <div style="color: var(--danger-color);">加载统计信息失败</div>
+        `;
+    }
+}
+
+// 页面加载时获取统计数据
+loadStats();
+</script>
+{% endblock %}

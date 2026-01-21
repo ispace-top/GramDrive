@@ -665,6 +665,32 @@ def get_local_files() -> list[dict]:
         finally:
             conn.close()
 
+def clear_local_path(file_id: str) -> bool:
+    """
+    清空文件的本地路径字段。
+
+    Args:
+        file_id: 文件ID
+
+    Returns:
+        是否成功更新
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE files SET local_path = NULL WHERE file_id = ?",
+                (file_id,)
+            )
+            conn.commit()
+            updated = cursor.rowcount > 0
+            if updated:
+                logger.info("清空文件本地路径: %s", file_id)
+            return updated
+        finally:
+            conn.close()
+
 # ==================== 下载统计 ====================
 
 def increment_download_count(file_id: str) -> bool:

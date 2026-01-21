@@ -106,3 +106,19 @@ async def share_page(request: Request, file_id: str):
         "markdown_code": f'[{file_info["filename"]}]({file_url})'
     }
     return templates.TemplateResponse("download.html", {"request": request, "file": file_data})
+
+
+@router.get("/stats", response_class=HTMLResponse)
+async def stats_page(request: Request):
+    """
+    提供统计仪表板页面。
+    """
+    return templates.TemplateResponse("stats.html", {"request": request, "cfg": _page_cfg(request)})
+
+
+@router.get("/downloads", response_class=HTMLResponse)
+async def downloads_page(request: Request):
+    """
+    提供下载管理页面。
+    """
+    return templates.TemplateResponse("downloads.html", {"request": request, "cfg": _page_cfg(request)})

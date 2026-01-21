@@ -94,15 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Upload Logic ---
     if (uploadArea && fileInput) {
-        // Prevent double dialog by stopping propagation from input
-        fileInput.addEventListener('click', (e) => e.stopPropagation());
 
-        uploadArea.addEventListener('click', (e) => {
-             // Only trigger if not clicking the input itself (though propagation stop handles it, this is extra safety)
-             if (e.target !== fileInput) {
-                 fileInput.click();
-             }
-        });
 
         uploadArea.addEventListener('dragover', (event) => {
             event.preventDefault();
