@@ -179,12 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update active state
         document.querySelectorAll('.category-tab').forEach(t => {
             t.classList.remove('active');
-            t.style.borderBottomColor = 'transparent';
-            t.style.color = 'var(--text-secondary)';
         });
         tab.classList.add('active');
-        tab.style.borderBottomColor = 'var(--primary-color)';
-        tab.style.color = 'var(--primary-color)';
 
         // Refresh file list with selected category
         applyFiltersAndSort();
@@ -237,6 +233,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Upload Logic ---
     if (uploadArea && fileInput) {
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
         uploadArea.addEventListener('dragover', (event) => {
             event.preventDefault();
             uploadArea.style.borderColor = 'var(--primary-color)';

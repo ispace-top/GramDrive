@@ -239,22 +239,25 @@
 async function loadStats() {
     try {
         const response = await fetch('/api/stats/dashboard');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const result = await response.json();
 
-        if (result.status !== 'success') {
-            throw new Error('Failed to load statistics');
+        if (!result || result.status !== 'success' || !result.data) {
+            throw new Error('Invalid response format');
         }
 
         const data = result.data;
 
-        // 更新总体统计
-        document.getElementById('totalCount').textContent = data.total_count.toLocaleString();
-        document.getElementById('totalSize').textContent = data.total_size_formatted;
-        document.getElementById('totalDownloads').textContent = data.total_downloads.toLocaleString();
-        document.getElementById('avgSize').textContent = data.avg_size_formatted;
+        // 更新总体统计 (显示 0 而不是错误)
+        document.getElementById('totalCount').textContent = (data.total_count || 0).toLocaleString();
+        document.getElementById('totalSize').textContent = data.total_size_formatted || '0 B';
+        document.getElementById('totalDownloads').textContent = (data.total_downloads || 0).toLocaleString();
+        document.getElementById('avgSize').textContent = data.avg_size_formatted || '0 B';
 
         // 文件类型分布
-        const fileTypesHtml = data.file_types.map(type => {
+        const fileTypesHtml = (data.file_types || []).map(type => {
             const icons = {
                 'image': '🖼️',
                 'video': '🎬',
@@ -289,7 +292,7 @@ async function loadStats() {
         document.getElementById('fileTypesList').innerHTML = fileTypesHtml || '<p class="text-muted">暂无数据</p>';
 
         // 热门文件
-        const popularFilesHtml = data.popular_files.slice(0, 10).map((file, index) => `
+        const popularFilesHtml = ((data.popular_files || []).slice(0, 10)).map((file, index) => `
             <div class="popular-file-item">
                 <div class="popular-file-rank" style="background: ${index < 3 ? '#f5576c' : '#667eea'}">
                     ${index + 1}
@@ -310,9 +313,17 @@ async function loadStats() {
 
     } catch (error) {
         console.error('Failed to load stats:', error);
-        document.getElementById('statsLoading').innerHTML = `
-            <div style="color: var(--danger-color);">加载统计信息失败</div>
-        `;
+        // Show default "no data" state instead of error message
+        document.getElementById('statsLoading').style.display = 'none';
+        document.getElementById('statsContent').style.display = 'block';
+
+        // Set all values to 0/empty
+        document.getElementById('totalCount').textContent = '0';
+        document.getElementById('totalSize').textContent = '0 B';
+        document.getElementById('totalDownloads').textContent = '0';
+        document.getElementById('avgSize').textContent = '0 B';
+        document.getElementById('fileTypesList').innerHTML = '<p class="text-muted">暂无数据</p>';
+        document.getElementById('popularFilesList').innerHTML = '<p class="text-muted">暂无数据</p>';
     }
 }
 

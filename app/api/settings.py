@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import logging
-from fastapi import APIRouter, Request
+import uuid
+import telegram
+from fastapi import APIRouter, Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-
-from .common import http_error
+from telegram.request import HTTPXRequest
 from .. import database
 from ..core.config import get_app_settings
 from ..core.http_client import apply_runtime_settings
-
-import telegram
-from telegram.request import HTTPXRequest
-
+from .auth import COOKIE_NAME
+from .common import http_error
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -102,9 +101,6 @@ async def save_and_apply(payload: AppConfigRequest, request: Request):
     # 只有当 BOT_TOKEN 和 CHANNEL_NAME 都存在时才尝试启动 Bot
     # 但 Web 设置无论如何都会保存生效
     await apply_runtime_settings(request.app, start_bot=True)
-    import uuid # 导入 uuid 模块
-
-    # ... (existing code for save_and_apply) ...
 
     resp = JSONResponse(
         status_code=200,
@@ -117,26 +113,25 @@ async def save_and_apply(payload: AppConfigRequest, request: Request):
             },
         },
     )
-    
+
     # Cookie handling
     pwd = (merged.get("PASS_WORD") or "").strip()
     if pwd:
-        # --- FIX: Generate a proper session ID and create a session ---
         # 清理旧的会话（如果有的话），虽然创建新会话会替换
         old_session_id = request.cookies.get(COOKIE_NAME)
         if old_session_id:
             database.delete_session(old_session_id)
-            
+
         new_session_id = str(uuid.uuid4())
-        database.create_session(new_session_id) # Create a session in the DB
-        
-        resp.set_cookie(key="tgstate_session", value=new_session_id, httponly=True, samesite="Lax", path="/")
+        database.create_session(new_session_id)
+
+        resp.set_cookie(key=COOKIE_NAME, value=new_session_id, httponly=True, samesite="Lax", path="/")
         logger.info("Configuration saved and applied, new session created.")
     else:
         # If password is removed, delete the session cookie
-        resp.delete_cookie("tgstate_session", path="/", httponly=True, samesite="Lax")
+        resp.delete_cookie(COOKIE_NAME, path="/", httponly=True, samesite="Lax")
         logger.info("Configuration saved and applied, session deleted (password removed).")
-        
+
     return resp
 
 

@@ -41,9 +41,9 @@
     </div>
     {% else %}
     <!-- Upload Area -->
-    <label class="card" style="border-style: dashed; text-align: center; padding: 40px; cursor: pointer; transition: all 0.2s; display: block;" 
+    <label class="card" style="border-style: dashed; text-align: center; padding: 40px; cursor: pointer; transition: all 0.2s; display: block;"
          id="upload-zone" for="file-picker">
-        <input type="file" id="file-picker" multiple>
+        <input type="file" id="file-picker" multiple hidden>
         <div style="color: var(--primary-color); margin-bottom: 12px;">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         </div>
@@ -67,44 +67,45 @@
     <!-- Category Tabs -->
     <div style="margin-bottom: 20px; border-bottom: 2px solid var(--border-color);">
         <div style="display: flex; gap: 0;">
-            <button class="category-tab active" data-category=""
-                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
-                           font-weight: 500; border-bottom: 3px solid var(--primary-color);
-                           color: var(--primary-color);">
+            <button class="category-tab active" data-category="">
                 全部
             </button>
-            <button class="category-tab" data-category="image"
-                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
-                           font-weight: 500; border-bottom: 3px solid transparent;
-                           color: var(--text-secondary);">
+            <button class="category-tab" data-category="image">
                 图片
             </button>
-            <button class="category-tab" data-category="video"
-                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
-                           font-weight: 500; border-bottom: 3px solid transparent;
-                           color: var(--text-secondary);">
+            <button class="category-tab" data-category="video">
                 视频
             </button>
-            <button class="category-tab" data-category="audio"
-                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
-                           font-weight: 500; border-bottom: 3px solid transparent;
-                           color: var(--text-secondary);">
+            <button class="category-tab" data-category="audio">
                 音频
             </button>
-            <button class="category-tab" data-category="document"
-                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
-                           font-weight: 500; border-bottom: 3px solid transparent;
-                           color: var(--text-secondary);">
+            <button class="category-tab" data-category="document">
                 文档
             </button>
-            <button class="category-tab" data-category="other"
-                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
-                           font-weight: 500; border-bottom: 3px solid transparent;
-                           color: var(--text-secondary);">
+            <button class="category-tab" data-category="other">
                 其他
             </button>
         </div>
     </div>
+    <style>
+    .category-tab {
+        padding: 12px 20px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-weight: 500;
+        border-bottom: 3px solid transparent;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+    }
+    .category-tab.active {
+        border-bottom-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+    .category-tab:hover:not(.active) {
+        color: var(--text-primary);
+    }
+    </style>
 
     <!-- File List -->
     <div class="card" style="padding: 0; overflow: hidden;">

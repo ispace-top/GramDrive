@@ -6,6 +6,7 @@ from typing import Any
 
 from ..core.config import get_active_password
 from .. import database
+from .auth import COOKIE_NAME
 
 logger = logging.getLogger(__name__)
 

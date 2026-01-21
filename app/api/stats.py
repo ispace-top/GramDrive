@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 
 from ..core.config import Settings, get_settings
 from .. import database
+from .common import http_error
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
