@@ -3,13 +3,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tgcloud
+    container_name: gramdrive
     restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
       # 持久化数据目录
-      - tgcloud-data:/app/data
+      - /mnt/d/PersonalFiles/SynologyDrive/tgcloud:/app/data
     environment:
       # 从 .env 文件加载环境变量
       - BOT_TOKEN=${BOT_TOKEN:-}
@@ -29,9 +29,9 @@ services:
       - tgcloud-network
 
 volumes:
-  tgcloud-data:
+  gramdrive-data:
     driver: local
 
 networks:
-  tgcloud-network:
+  gramdrive-network:
     driver: bridge

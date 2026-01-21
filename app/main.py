@@ -21,8 +21,8 @@ logging.basicConfig(
 # 使用集成的 lifespan 管理器创建 FastAPI 应用
 app = FastAPI(
     lifespan=lifespan,
-    title="TgCloud",
-    description="一个基于 Telegram 的私有文件存储系统。",
+    title="Gram Drive",
+    description="一个基于 Telegram 的个人网盘服务。",
     version="2.0.0"
 )
 
@@ -97,7 +97,9 @@ async def auth_middleware(request: Request, call_next):
         "/api/batch_delete", 
         "/api/app-config", 
         "/api/reset-config",
-        "/api/set-password" 
+        "/api/set-password",
+        "/api/stats", # Protect stats API
+        "/api/downloads" # Protect downloads API (related to new features)
     )
     
     if any(request_path.startswith(prefix) for prefix in protected_api_prefixes):

@@ -21,12 +21,14 @@ class DownloadConfig(BaseModel):
     download_dir: str
     file_types: str
     max_size: int
+    min_size: int
 
 class SaveConfigPayload(BaseModel):
     enabled: bool
     download_dir: str
     file_types: str
     max_size: int
+    min_size: int
 
 class DeleteLocalFilePayload(BaseModel):
     file_id: str
@@ -77,7 +79,8 @@ async def get_download_config():
             "enabled": settings.get("AUTO_DOWNLOAD_ENABLED", False),
             "download_dir": settings.get("DOWNLOAD_DIR", "/app/downloads"),
             "file_types": settings.get("DOWNLOAD_FILE_TYPES", "image,video"),
-            "max_size": settings.get("DOWNLOAD_MAX_SIZE", 52428800)
+            "max_size": settings.get("DOWNLOAD_MAX_SIZE", 52428800),
+            "min_size": settings.get("DOWNLOAD_MIN_SIZE", 0)
         }
         return {"status": "success", "data": config_data}
     except Exception as e:
@@ -96,6 +99,7 @@ async def save_download_config(payload: SaveConfigPayload):
             "DOWNLOAD_DIR": payload.download_dir,
             "DOWNLOAD_FILE_TYPES": payload.file_types,
             "DOWNLOAD_MAX_SIZE": payload.max_size,
+            "DOWNLOAD_MIN_SIZE": payload.min_size,
         }
         current_settings.update(update_data)
         

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}文件管理 - tgState{% endblock %}
+{% block title %}文件管理 - Gram Drive{% endblock %}
 
 {% block content %}
 <div style="display: flex; flex-direction: column; gap: 24px;">
@@ -8,6 +8,33 @@
     <div class="flex-between">
         <h1 style="font-size: 24px; font-weight: 700;">文件管理</h1>
         <div style="display: flex; gap: 12px; flex: 1; justify-content: flex-end; min-width: 0;">
+            <!-- Sort By Filter -->
+            <div class="input-group" style="margin-bottom: 0; max-width: 150px; width: 100%;">
+                <select id="file-sort-by" class="input-field">
+                    <option value="upload_date">按日期</option>
+                    <option value="filename">按名称</option>
+                    <option value="filesize">按大小</option>
+                </select>
+            </div>
+            <!-- Sort Order -->
+            <div class="input-group" style="margin-bottom: 0; max-width: 100px; width: 100%;">
+                <select id="file-sort-order" class="input-field">
+                    <option value="desc">降序</option>
+                    <option value="asc">升序</option>
+                </select>
+            </div>
+            <!-- Category Filter -->
+            <div class="input-group" style="margin-bottom: 0; max-width: 180px; width: 100%;">
+                <select id="file-category-filter" class="input-field">
+                    <option value="">所有文件</option>
+                    <option value="image">图片</option>
+                    <option value="video">视频</option>
+                    <option value="audio">音频</option>
+                    <option value="document">文档</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+            <!-- Search Input -->
             <div class="input-group" style="margin-bottom: 0; max-width: 300px; width: 100%;">
                 <input type="text" id="file-search" class="input-field" placeholder="搜索文件..." style="width: 100%;">
             </div>
@@ -64,7 +91,7 @@
                 <tbody id="file-list-disk">
                     {% if files %}
                         {% for file in files %}
-                        <tr class="file-item" style="border-bottom: 1px solid var(--border-color);" id="file-item-{{ file.file_id.replace(':', '-') }}" data-short-id="{{ file.short_id or '' }}" data-file-id="{{ file.file_id }}" data-filename="{{ file.filename }}" data-file-url="/d/{{ file.short_id if file.short_id else file.file_id }}">
+                        <tr class="file-item clickable-file-row" style="border-bottom: 1px solid var(--border-color); cursor: pointer;" id="file-item-{{ file.file_id.replace(':', '-') }}" data-short-id="{{ file.short_id or '' }}" data-file-id="{{ file.file_id }}" data-filename="{{ file.filename }}" data-file-url="/d/{{ file.short_id if file.short_id else file.file_id }}" data-file-type="{{ file.mime_type or 'application/octet-stream' }}">
                             <td style="padding: 12px 16px;"><input type="checkbox" class="file-checkbox" data-file-id="{{ file.file_id }}"></td>
                             <td style="padding: 12px 16px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -76,13 +103,13 @@
                             <td style="padding: 12px 16px;" class="text-sm text-muted">{{ file.upload_date.split(' ')[0] }}</td>
                             <td style="padding: 12px 16px; text-align: right;">
                                 <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                                    <a href="/d/{{ file.short_id if file.short_id else file.file_id }}" class="btn btn-ghost" style="padding: 4px 8px; height: 28px;" title="下载">
+                                    <a href="/d/{{ file.short_id if file.short_id else file.file_id }}" class="btn btn-ghost" style="padding: 4px 8px; height: 28px;" title="下载" onclick="event.stopPropagation()">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                     </a>
-                                    <button class="btn btn-ghost copy-link-btn" style="padding: 4px 8px; height: 28px;" title="复制链接">
+                                    <button class="btn btn-ghost copy-link-btn" style="padding: 4px 8px; height: 28px;" title="复制链接" onclick="event.stopPropagation()">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                     </button>
-                                    <button class="btn btn-ghost delete" style="padding: 4px 8px; height: 28px; color: var(--danger-color);" onclick="deleteFile('{{ file.file_id }}')" title="删除">
+                                    <button class="btn btn-ghost delete" style="padding: 4px 8px; height: 28px; color: var(--danger-color);" onclick="event.stopPropagation(); deleteFile('{{ file.file_id }}')" title="删除">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                     </button>
                                 </div>
@@ -102,5 +129,50 @@
     </div>
     {% endif %}
 </div>
-<script src="{{ url_for('static', path='/js/main.js') }}?v=4.0"></script>
+<!-- File Preview Modal -->
+<div id="file-preview-modal" class="modal">
+    <div class="modal-content" style="max-width: 90vw; max-height: 90vh; overflow: hidden; background: transparent; box-shadow: none;">
+        <span class="close-button" style="color: white; opacity: 0.8; font-size: 2rem; position: absolute; top: 10px; right: 20px; z-index: 1000;">&times;</span>
+        <div class="modal-body" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img id="preview-image" src="" alt="File Preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+            <video id="preview-video" src="" controls style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;"></video>
+            <iframe id="preview-iframe" src="" frameborder="0" style="width: 100%; height: 100%; display: none;"></iframe>
+            <div id="preview-unsupported" style="color: white; text-align: center; display: none;">
+                <p>该文件类型不支持直接预览。</p>
+                <a id="preview-download-link" href="#" target="_blank" class="btn btn-primary" style="margin-top: 15px;">下载文件</a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
+
+<style>
+/* Basic Modal Styles (can be moved to ui.css) */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 999; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.8); /* Black w/ opacity */
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    margin: auto;
+    padding: 0;
+    width: 80%;
+    height: 80%;
+    position: relative;
+    display: flex; /* For centering content within */
+    flex-direction: column;
+}
+
+.close-button {
+    cursor: pointer;
+}
+</style>

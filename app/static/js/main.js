@@ -75,27 +75,85 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Search Functionality ---
+    // --- Global Variables ---
+    const uploadArea = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-picker');
+    const progressArea = document.getElementById('prog-zone');
+    const doneArea = document.getElementById('done-zone');
+    const searchInput = document.getElementById('file-search');
+    const categoryFilter = document.getElementById('file-category-filter');
+    const sortByFilter = document.getElementById('file-sort-by'); // New global variable for sort by filter
+    const sortOrderFilter = document.getElementById('file-sort-order'); // New global variable for sort order filter
+
+    // --- File Fetching and Rendering ---
+    async function fetchAndRenderFiles(category = '', searchTerm = '', sortBy = 'upload_date', sortOrder = 'desc') { // Added sortBy, sortOrder
+        const fileListDisk = document.getElementById('file-list-disk');
+        if (!fileListDisk) return; // Not on the main files page
+
+        fileListDisk.innerHTML = '<tr><td colspan="5" style="padding: 48px; text-align: center;"><div class="text-muted">加载文件...</div></td></tr>';
+
+        let url = '/api/files?';
+        if (category) url += `category=${category}&`;
+        if (searchTerm) url += `search=${searchTerm}&`;
+        if (sortBy) url += `sort_by=${sortBy}&`; // Add sortBy
+        if (sortOrder) url += `sort_order=${sortOrder}&`; // Add sortOrder
+        url = url.slice(0, -1); // Remove trailing '&' or '?'
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                // Handle non-200 responses, e.g., 401 Unauthorized
+                const errorData = await response.json();
+                throw new Error(errorData.detail?.message || `API error: ${response.status}`);
+            }
+            const files = await response.json(); // Assuming API directly returns list of files
+
+            fileListDisk.innerHTML = ''; // Clear previous content
+
+            if (files.length === 0) {
+                fileListDisk.innerHTML = '<tr><td colspan="5" style="padding: 48px; text-align: center;"><div class="text-muted">暂无文件</div></td></tr>';
+                return;
+            }
+
+            files.forEach(file => addNewFileElement(file, 'beforeend')); // Pass position to append
+            // Remove empty state if exists, after adding files (redundant if fileListDisk.innerHTML is cleared)
+            // const emptyState = fileListDisk.querySelector('div[style*="text-align: center"]');
+            // if (emptyState) emptyState.remove();
+
+        } catch (error) {
+            console.error('Error fetching files:', error);
+            fileListDisk.innerHTML = `<tr><td colspan="5" style="padding: 48px; text-align: center;"><div style="color: var(--danger-color);">加载文件失败: ${error.message}</div></td></tr>`;
+        }
+        updateBatchControls(); // Update batch controls after files are rendered
+    }
+
+    // --- Search & Category & Sort Functionality ---
+    const applyFiltersAndSort = () => {
+        const term = searchInput ? searchInput.value : '';
+        const category = categoryFilter ? categoryFilter.value : '';
+        const sortBy = sortByFilter ? sortByFilter.value : '';
+        const sortOrder = sortOrderFilter ? sortOrderFilter.value : '';
+        fetchAndRenderFiles(category, term, sortBy, sortOrder);
+    };
+
     if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            // Select both file list items and image grid cards
-            const items = document.querySelectorAll('.file-item, .image-card');
-            items.forEach(item => {
-                const name = (item.dataset.filename || '').toLowerCase();
-                if (name.includes(term)) {
-                    item.style.display = ''; // Reset to default (grid or flex)
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
+        searchInput.addEventListener('input', applyFiltersAndSort);
+    }
+
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', applyFiltersAndSort);
+    }
+    
+    if (sortByFilter) {
+        sortByFilter.addEventListener('change', applyFiltersAndSort);
+    }
+
+    if (sortOrderFilter) {
+        sortOrderFilter.addEventListener('change', applyFiltersAndSort);
     }
 
     // --- Upload Logic ---
     if (uploadArea && fileInput) {
-
-
         uploadArea.addEventListener('dragover', (event) => {
             event.preventDefault();
             uploadArea.style.borderColor = 'var(--primary-color)';
@@ -375,6 +433,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- SSE & Realtime Updates ---
     const fileListContainer = document.getElementById('file-list-disk');
     if (fileListContainer) {
+        // Initial fetch on load, applying current filter and sort selections
+        const initialCategory = categoryFilter ? categoryFilter.value : '';
+        const initialSortBy = sortByFilter ? sortByFilter.value : 'upload_date'; // Default sort
+        const initialSortOrder = sortOrderFilter ? sortOrderFilter.value : 'desc'; // Default order
+        fetchAndRenderFiles(initialCategory, '', initialSortBy, initialSortOrder);
+        
         let eventSource = null;
 
         const connectSSE = () => {
@@ -391,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateBatchControls();
                     return;
                 }
-                addNewFileElement(msg);
+                addNewFileElement(msg, 'afterbegin'); // Prepend new files
             };
 
             eventSource.onerror = () => {
@@ -400,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         };
 
+        // Connect SSE after initial file fetch
         connectSSE();
     }
 
@@ -411,10 +476,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return s.split(' ')[0].split('T')[0];
     }
 
-    function addNewFileElement(file) {
+    function addNewFileElement(file, position = 'afterbegin') { // Default to afterbegin for new uploads
         const isGridView = document.querySelector('.image-grid') !== null;
         const container = document.getElementById('file-list-disk');
-        
+        if (!container) return; // Not on the file list page
+
         // Remove empty state if exists
         const emptyState = container.querySelector('div[style*="text-align: center"]');
         if (emptyState) emptyState.remove();
@@ -476,8 +542,100 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>`;
         }
 
-        container.insertAdjacentHTML('afterbegin', html);
+        container.insertAdjacentHTML(position, html); // Use position
     }
+
+    // --- File Preview Logic ---
+    const filePreviewModal = document.getElementById('file-preview-modal');
+    const previewImage = document.getElementById('preview-image');
+    const previewVideo = document.getElementById('preview-video');
+    const previewIframe = document.getElementById('preview-iframe');
+    const previewUnsupported = document.getElementById('preview-unsupported');
+    const previewDownloadLink = document.getElementById('preview-download-link');
+    const previewCloseButton = filePreviewModal ? filePreviewModal.querySelector('.close-button') : null;
+
+    function resetPreviewModal() {
+        if (previewImage) previewImage.style.display = 'none';
+        if (previewVideo) previewVideo.style.display = 'none';
+        if (previewIframe) previewIframe.style.display = 'none';
+        if (previewUnsupported) previewUnsupported.style.display = 'none';
+        if (previewImage) previewImage.src = '';
+        if (previewVideo) previewVideo.src = '';
+        if (previewIframe) previewIframe.src = '';
+        if (previewVideo) previewVideo.pause(); // Pause video playback
+    }
+
+    function openPreviewModal(fileUrl, fileType, fileName) {
+        if (!filePreviewModal) return;
+
+        resetPreviewModal();
+        filePreviewModal.style.display = 'flex'; // Use flex to center modal-content
+
+        let supported = false;
+
+        if (fileType.startsWith('image/')) {
+            if (previewImage) {
+                previewImage.src = fileUrl;
+                previewImage.style.display = 'block';
+            }
+            supported = true;
+        } else if (fileType.startsWith('video/') || fileType.startsWith('audio/')) {
+            if (previewVideo) {
+                previewVideo.src = fileUrl;
+                previewVideo.style.display = 'block';
+                previewVideo.load(); // Load video to show poster/metadata
+                previewVideo.play();
+            }
+            supported = true;
+        } else if (fileType === 'application/pdf' || fileType.startsWith('text/')) {
+            if (previewIframe) {
+                previewIframe.src = fileUrl;
+                previewIframe.style.display = 'block';
+            }
+            supported = true;
+        }
+
+        if (!supported) {
+            if (previewUnsupported) previewUnsupported.style.display = 'block';
+            if (previewDownloadLink) {
+                previewDownloadLink.href = `${fileUrl}?download=1`;
+                previewDownloadLink.textContent = `下载 ${fileName}`;
+            }
+        }
+    }
+
+    function closePreviewModal() {
+        if (filePreviewModal) {
+            filePreviewModal.style.display = 'none';
+            resetPreviewModal();
+        }
+    }
+
+    if (previewCloseButton) {
+        previewCloseButton.addEventListener('click', closePreviewModal);
+    }
+    // Close modal if user clicks outside of modal-content
+    if (filePreviewModal) {
+        filePreviewModal.addEventListener('click', (e) => {
+            if (e.target === filePreviewModal) {
+                closePreviewModal();
+            }
+        });
+    }
+
+    // Attach click listener to file items
+    document.addEventListener('click', (e) => {
+        const fileRow = e.target.closest('.clickable-file-row');
+        // Ensure the click wasn't on a child button/link (handled by event.stopPropagation in HTML)
+        if (fileRow && e.target.closest('button, a') === null) {
+            const fileId = fileRow.dataset.fileId;
+            const fileUrl = fileRow.dataset.fileUrl;
+            const fileType = fileRow.dataset.fileType;
+            const fileName = fileRow.dataset.filename;
+            
+            openPreviewModal(fileUrl, fileType, fileName);
+        }
+    });
 
     // --- Global Helpers ---
     window.deleteFile = async (fileId) => {

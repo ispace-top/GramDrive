@@ -21,50 +21,39 @@ def http_error(status_code: int, message: str, *, code: str = "error", details: 
     return HTTPException(status_code=status_code, detail=error_payload(message, code=code, details=details))
 
 
-def is_web_upload_request(request: Request) -> bool:
-    return "referer" in request.headers
-
-
-import re
-
-COOKIE_NAME = "tgstate_session"
-
 def ensure_upload_auth(request: Request, app_settings: dict, submitted_key: str | None) -> None:
     picgo_api_key = app_settings.get("PICGO_API_KEY")
-    active_password = app_settings.get("PASS_WORD") or get_active_password()
-    web_request = is_web_upload_request(request)
+    web_password_set = bool(app_settings.get("PASS_WORD") or get_active_password())
+    
+    # 检查会话认证
+    session_id = request.cookies.get(COOKIE_NAME)
+    is_authenticated_via_session = session_id and database.get_session(session_id)
 
-    if not active_password and not picgo_api_key:
+    # 检查 API Key 认证
+    is_authenticated_via_api_key = picgo_api_key and (picgo_api_key == submitted_key)
+
+    # 场景 1: 完全开放 (无密码, 无 PicGo API Key)
+    if not web_password_set and not picgo_api_key:
         return
 
-    if picgo_api_key and not active_password:
-        if web_request:
-            return
-        if picgo_api_key == submitted_key:
-            return
-        logger.warning("API 上传鉴权失败：无效 API Key")
+    # 场景 2: 已通过会话认证 (优先考虑)
+    if is_authenticated_via_session:
+        return
+
+    # 场景 3: 已通过 API Key 认证
+    if is_authenticated_via_api_key:
+        return
+
+    # 如果到达这里，说明会话和 API Key 认证都未通过
+    # 根据配置，抛出特定的错误
+    if web_password_set: # 如果设置了网页密码，但未通过会话认证
+        raise http_error(401, "需要网页登录", code="login_required")
+    
+    if picgo_api_key: # 如果设置了 PicGo API Key，但未通过 API Key 认证
         raise http_error(401, "无效的 API 密钥", code="invalid_api_key")
 
-    if not picgo_api_key and active_password:
-        if not web_request:
-            return
-        # 验证 session 是否有效
-        session_id = request.cookies.get(COOKIE_NAME)
-        if session_id and database.get_session(session_id):
-            return
-        logger.warning("Web 上传鉴权失败：需要登录")
-        raise http_error(401, "需要网页登录", code="login_required")
+    # 默认 fallback，理论上不应该到达这里，除非既没有密码也没有 API Key (已在场景1处理)
+    # 或者配置有问题
+    raise http_error(401, "未经授权的上传请求", code="unauthorized_upload")
 
-    if web_request:
-        # 验证 session 是否有效
-        session_id = request.cookies.get(COOKIE_NAME)
-        if session_id and database.get_session(session_id):
-            return
-        logger.warning("Web 上传鉴权失败：需要登录")
-        raise http_error(401, "需要网页登录", code="login_required")
-
-    if picgo_api_key == submitted_key:
-        return
-    logger.warning("API 上传鉴权失败：无效 API Key")
-    raise http_error(401, "无效的 API 密钥", code="invalid_api_key")
 

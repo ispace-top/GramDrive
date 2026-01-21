@@ -13,26 +13,30 @@ logger = logging.getLogger(__name__)
 @router.get("/api/stats/dashboard")
 async def get_dashboard_stats(settings: Settings = Depends(get_settings)):
     """获取仪表板统计数据"""
-    stats = database.get_statistics()
+    try:
+        stats = database.get_statistics()
 
-    # 格式化文件大小为人类可读格式
-    def format_size(bytes_size):
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if bytes_size < 1024.0:
-                return f"{bytes_size:.2f} {unit}"
-            bytes_size /= 1024.0
-        return f"{bytes_size:.2f} PB"
+        # 格式化文件大小为人类可读格式
+        def format_size(bytes_size):
+            for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+                if bytes_size < 1024.0:
+                    return f"{bytes_size:.2f} {unit}"
+                bytes_size /= 1024.0
+            return f"{bytes_size:.2f} PB"
 
-    stats["total_size_formatted"] = format_size(stats["total_size"])
+        stats["total_size_formatted"] = format_size(stats["total_size"])
 
-    # 格式化类型统计中的大小
-    for type_name, type_data in stats["by_type"].items():
-        type_data["size_formatted"] = format_size(type_data["size"])
+        # 格式化类型统计中的大小
+        for type_name, type_data in stats["by_type"].items():
+            type_data["size_formatted"] = format_size(type_data["size"])
 
-    return {
-        "status": "success",
-        "data": stats
-    }
+        return {
+            "status": "success",
+            "data": stats
+        }
+    except Exception as e:
+        logger.error("Error fetching statistics: %s", e)
+        raise http_error(500, "无法加载统计数据。", details=str(e))
 
 
 @router.get("/api/stats/local-files")

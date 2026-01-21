@@ -1,21 +1,21 @@
-# TgCloud: 您的专属 Telegram 私有云存储
+# Gram Drive: 您的专属 Telegram 私有云存储
 
 [![构建状态](https://github.com/ispace-top/tgstate-python/actions/workflows/docker-image.yml/badge.svg)](https://github.com/ispace-top/tgstate-python/actions/workflows/docker-image.yml)
 [![Python 版本](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://www.python.org/)
 [![框架](https://img.shields.io/badge/框架-FastAPI-green?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![许可证](https://img.shields.io/badge/许可证-MIT-blue.svg)](LICENSE)
-[![Docker 拉取量](https://img.shields.io/docker/pulls/wapedkj/tgcloud?logo=docker)](https://hub.docker.com/r/wapedkj/tgcloud)
+[![Docker 拉取量](https://img.shields.io/docker/pulls/wapedkj/gramdrive?logo=docker)](https://hub.docker.com/r/wapedkj/gramdrive)
 
 [English Version](README.en.md)
 
 **将您的 Telegram 账号转变为一个功能丰富、永久在线的私有云存储和媒体中心。**
 
-TgCloud 利用 Telegram 无限的存储能力，提供一个优雅的网页界面，让您轻松管理文件、创建分享链接，甚至可以作为 PicGo 等服务的高效图床。所有数据都安全地存储在您选择的私有频道或群组中。
+Gram Drive 利用 Telegram 无限的存储能力，提供一个优雅的网页界面，让您轻松管理文件、创建分享链接，甚至可以作为 PicGo 等服务的高效图床。所有数据都安全地存储在您选择的私有频道或群组中。
 
 ---
 
 <!-- 建议在此处添加网页界面的截图或 GIF！ -->
-<!-- ![TgCloud 截图](https://your-image-host.com/tgcloud_screenshot.png) -->
+<!-- ![Gram Drive 截图](https://your-image-host.com/gramdrive_screenshot.png) -->
 
 ## ✨ 主要功能
 
@@ -54,7 +54,7 @@ TgCloud 利用 Telegram 无限的存储能力，提供一个优雅的网页界�
 
 ## 🚀 快速开始
 
-您可以通过 Docker（推荐用于生产环境）部署 TgCloud，也可以从源代码直接运行（用于开发）。
+您可以通过 Docker（推荐用于生产环境）部署 Gram Drive，也可以从源代码直接运行（用于开发）。
 
 ### 1. Docker 部署（推荐）
 
@@ -62,17 +62,35 @@ TgCloud 利用 Telegram 无限的存储能力，提供一个优雅的网页界�
 
 ```bash
 # 1. 创建一个持久化卷用于存储数据（数据库等）
-docker volume create tgcloud_data
+docker volume create gramdrive_data
 
 # 2. 拉取最新镜像并运行容器
 # 将 8000 替换为您的主机上偏好的任何端口
 docker run -d \
-  --name tgcloud \
+  --name gramdrive \
   --restart unless-stopped \
   -p 8000:8000 \
-  -v tgcloud_data:/app/data \
-  wapedkj/tgcloud:latest
+  -v gramdrive_data:/app/data \
+  wapedkj/gramdrive:latest
 ```
+
+**关于自动下载的 `DOWNLOAD_DIR` 配置**
+
+如果您启用了“下载管理器”中的自动下载功能，并希望下载的文件持久化存储在宿主机上，您需要将容器内部的下载路径 `/app/downloads` 映射到宿主机的一个目录。例如：
+
+```bash
+docker run -d \
+  --name gramdrive \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v gramdrive_data:/app/data \
+  -v /path/on/your/host:/app/downloads \ # 新增这一行：将容器内下载目录映射到宿主机
+  wapedkj/gramdrive:latest
+```
+
+*   请将 `/path/on/your/host` 替换为您希望存储下载文件的宿主机绝对路径。
+*   **重要提示**：请确保 `/path/on/your/host` 目录存在，并且 Docker 有权限写入该目录。
+
 
 运行命令后，通过 `http://<您的服务器IP>:8000` 访问网页界面。
 

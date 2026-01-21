@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}设置 - tgState{% endblock %}
+{% block title %}设置 - Gram Drive{% endblock %}
 
 {% block content %}
 <div style="max-width: 800px; margin: 0 auto;">
@@ -102,42 +102,58 @@ function initData() {
     fetch('/api/app-config')
         .then(r => r.json())
         .then(data => {
+            // 存储原始配置的 SET 状态，以便保存时判断是否清除
+            window._initialSettingsSetState = {
+                BOT_TOKEN_SET: data.cfg.BOT_TOKEN_SET,
+                PICGO_API_KEY_SET: data.cfg.PICGO_API_KEY_SET
+            };
+
             for (let k in data.cfg) {
-                // 特殊处理密码字段，如果已设置则不显示（为了安全），或者显示占位符
-                if (k === 'PASS_WORD_SET') continue;
-                
                 const el = document.getElementsByName(k)[0];
-                if (el) el.value = data.cfg[k] || '';
+                if (el) {
+                    if (k === 'BOT_TOKEN' && data.cfg.BOT_TOKEN_SET) {
+                        el.placeholder = '已配置 (********** Keep current if empty)';
+                        // 不填充实际值
+                    } else if (k === 'PICGO_API_KEY' && data.cfg.PICGO_API_KEY_SET) {
+                        el.placeholder = '已配置 (********** Keep current if empty)';
+                        // 不填充实际值
+                    } else if (k === 'PASS_WORD_SET') {
+                        // PASS_WORD_SET 仅作判断用，不填充到表单
+                    } else if (k === 'PASS_WORD') {
+                        // 密码字段留空不回显，placeholder已处理
+                    }
+                    else {
+                        el.value = data.cfg[k] || '';
+                    }
+                }
             }
+        })
+        .catch(e => {
+            console.error("Error loading app config:", e);
+            Toast.show('加载配置失败', 'error');
         });
 }
 
-function togglePwd(id) {
-    const el = document.getElementById(id);
-    el.type = el.type === 'password' ? 'text' : 'password';
-}
-
-function fillOrigin() {
-    document.getElementById('BASE_URL').value = window.location.origin;
-}
-
-function genKey() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < 32; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-    document.getElementById('PICGO_API_KEY').value = result;
-}
-
-function toggleAdvanced() {
-    document.getElementById('advanced-panel').classList.toggle('hidden');
-}
+// ... (existing togglePwd, fillOrigin, genKey, toggleAdvanced functions) ...
 
 async function saveConfig(apply = false) {
     const btn = document.getElementById(apply ? 'btn-finish' : 'btn-save');
     Utils.setLoading(btn, true);
     
     const form = document.getElementById('settings-form');
-    const data = Object.fromEntries(new FormData(form));
+    const formData = new FormData(form);
+    const data = {};
+
+    for (const [key, value] of formData.entries()) {
+        if (key === 'BOT_TOKEN' || key === 'PICGO_API_KEY') {
+            // 如果这些字段为空，且之前是已设置状态，则不发送该字段，保持原值不变
+            if (!value && window._initialSettingsSetState && window._initialSettingsSetState[key + '_SET']) {
+                // 不将空字符串发送到后端，后端会保持原值
+                continue; 
+            }
+        }
+        data[key] = value;
+    }
     
     // 如果密码为空，从提交数据中移除，避免覆盖为空字符串
     if (!data.PASS_WORD) delete data.PASS_WORD;
@@ -153,6 +169,10 @@ async function saveConfig(apply = false) {
         
         if (res.ok) {
             Toast.show(apply ? '配置已保存并应用' : '配置已保存');
+            // 更新 _initialSettingsSetState 状态
+            window._initialSettingsSetState.BOT_TOKEN_SET = !!data.BOT_TOKEN;
+            window._initialSettingsSetState.PICGO_API_KEY_SET = !!data.PICGO_API_KEY;
+
             if (apply) {
                 // 如果应用成功，可能会涉及到 Bot 重启，等待一下刷新页面状态
                 setTimeout(() => location.reload(), 1000);

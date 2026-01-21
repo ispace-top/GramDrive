@@ -8,6 +8,8 @@ import asyncio
 from .. import database
 from ..bot_handler import create_bot_app
 from ..core.config import get_app_settings
+from ..services.download_service import DownloadService, get_download_service # New import
+from ..services.telegram_service import get_telegram_service # New import, needed for DownloadService
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,17 @@ async def lifespan(app: FastAPI):
             app.state.bot_app = None
             app.state.bot_error = str(e)
 
+    # 4. 初始化并启动 DownloadService (如果 Telegram Bot 已准备就绪)
+    if app.state.bot_ready and app.state.bot_app: # Ensure bot is running, DownloadService needs TelegramService
+        try:
+            download_service_instance = await get_download_service(get_telegram_service())
+            app.state.download_service = download_service_instance
+            await download_service_instance.start()
+            logger.info("DownloadService 已启动。")
+        except Exception as e:
+            logger.error("启动 DownloadService 失败: %s", e)
+            app.state.download_service = None
+
     yield # 应用在此处运行
 
     # --- 关闭逻辑 ---
@@ -112,7 +125,11 @@ async def lifespan(app: FastAPI):
         await http_client.aclose()
         logger.info("共享的 HTTP 客户端已关闭")
 
-    # 2. 停止 Telegram Bot
+    # 2. 停止 DownloadService
+    if hasattr(app.state, "download_service") and app.state.download_service:
+        await app.state.download_service.stop()
+
+    # 3. 停止 Telegram Bot
     await _stop_bot(app)
 
 

@@ -253,8 +253,13 @@ async def download_file_short(
 
 
 @router.get("/api/files")
-async def get_files_list():
-    return database.get_all_files()
+async def get_files_list(
+    category: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None, regex="^(filename|filesize|upload_date)$"), # Add sort_by
+    sort_order: Optional[str] = Query(None, regex="^(asc|desc)$") # Add sort_order
+):
+    # Pass parameters to get_all_files
+    return database.get_all_files(category=category, sort_by=sort_by, sort_order=sort_order)
 
 
 @router.delete("/api/files/{file_id}")

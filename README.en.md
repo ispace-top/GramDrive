@@ -1,21 +1,21 @@
-# TgCloud: Your Personal Telegram Cloud Storage
+# Gram Drive: Your Personal Telegram Cloud Storage
 
 [![Build Status](https://github.com/ispace-top/tgstate-python/actions/workflows/docker-image.yml/badge.svg)](https://github.com/ispace-top/tgstate-python/actions/workflows/docker-image.yml)
 [![Python Version](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-FastAPI-green?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker Pulls](https://img.shields.io/docker/pulls/wapedkj/tgcloud?logo=docker)](https://hub.docker.com/r/wapedkj/tgcloud)
+[![Docker Pulls](https://img.shields.io/docker/pulls/wapedkj/gramdrive?logo=docker)](https://hub.docker.com/r/wapedkj/gramdrive)
 
 [中文版本](README.md)
 
 **Transform your Telegram account into a private, feature-rich, and everlasting cloud storage and media center.**
 
-TgCloud leverages Telegram's unlimited storage, providing a sleek web interface to manage your files, create shareable links, and even serve as a powerful image host for services like PicGo. All your data is securely stored in a private channel or group of your choice.
+Gram Drive leverages Telegram's unlimited storage, providing a sleek web interface to manage your files, create shareable links, and even serve as a powerful image host for services like PicGo. All your data is securely stored in a private channel or group of your choice.
 
 ---
 
 <!-- We recommend adding a screenshot or GIF of the web interface here! -->
-<!-- ![TgCloud Screenshot](https://your-image-host.com/tgcloud_screenshot.png) -->
+<!-- ![Gram Drive Screenshot](https://your-image-host.com/gramdrive_screenshot.png) -->
 
 ## ✨ Key Features
 
@@ -54,7 +54,7 @@ TgCloud leverages Telegram's unlimited storage, providing a sleek web interface 
 
 ## 🚀 Getting Started
 
-You can deploy TgCloud using Docker (recommended for production) or run it directly from the source code (for development).
+You can deploy Gram Drive using Docker (recommended for production) or run it directly from the source code (for development).
 
 ### 1. Docker Deployment (Recommended)
 
@@ -62,17 +62,35 @@ This is the easiest and most reliable way to get started.
 
 ```bash
 # 1. Create a persistent volume for your data (database, etc.)
-docker volume create tgcloud_data
+docker volume create gramdrive_data
 
 # 2. Pull the latest image and run the container
 # Replace 8000 with any port you prefer on your host machine
 docker run -d \
-  --name tgcloud \
+  --name gramdrive \
   --restart unless-stopped \
   -p 8000:8000 \
-  -v tgcloud_data:/app/data \
-  wapedkj/tgcloud:latest
+  -v gramdrive_data:/app/data \
+  wapedkj/gramdrive:latest
 ```
+
+**Configuring `DOWNLOAD_DIR` for Automatic Downloads**
+
+If you enable the automatic download feature in the "Downloads Manager" and want the downloaded files to be persistently stored on your host machine, you need to map the container's download path `/app/downloads` to a directory on your host. For example:
+
+```bash
+docker run -d \
+  --name gramdrive \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v gramdrive_data:/app/data \
+  -v /path/on/your/host:/app/downloads \# Add this line: maps container download dir to host
+  wapedkj/gramdrive:latest
+```
+
+*   Please replace `/path/on/your/host` with the absolute path on your host machine where you want to store downloaded files.
+*   **Important**: Ensure the `/path/on/your/host` directory exists and Docker has write permissions to it.
+
 
 After running the command, access the web interface at `http://<your_server_ip>:8000`.
 

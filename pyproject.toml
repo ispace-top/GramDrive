@@ -1,7 +1,7 @@
 [project]
-name = "tgcloud"
+name = "gramdrive"
 version = "2.0.0"
-description = "TgCloud - A Telegram-based private cloud storage system"
+description = "Gram Drive - A Telegram-based personal cloud storage service"
 requires-python = ">=3.11"
 
 [tool.ruff]

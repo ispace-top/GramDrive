@@ -33,7 +33,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ secrets.DOCKER_USERNAME }}/tgcloud
+          images: ${{ secrets.DOCKER_USERNAME }}/gramdrive
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=tag

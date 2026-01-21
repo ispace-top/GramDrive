@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}下载管理 - tgState{% endblock %}
+{% block title %}下载管理 - Gram Drive{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -51,6 +51,12 @@
                     <label class="form-label" for="maxSize">最大文件大小 (MB)</label>
                     <input type="number" id="maxSize" class="form-input" min="1" max="2000" step="1" placeholder="50">
                     <p class="form-hint">超过此大小的文件将不会自动下载</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="minSize">最小文件大小 (MB)</label>
+                    <input type="number" id="minSize" class="form-input" min="0" max="2000" step="1" placeholder="0">
+                    <p class="form-hint">小于此大小的文件将不会自动下载 (设置为 0 则不限制)</p>
                 </div>
 
                 <div class="form-group">
@@ -193,6 +199,7 @@ async function loadConfig() {
             const config = result.data;
             document.getElementById('autoDownloadEnabled').checked = config.enabled;
             document.getElementById('maxSize').value = Math.round(config.max_size / 1024 / 1024);
+            document.getElementById('minSize').value = Math.round(config.min_size / 1024 / 1024);
             document.getElementById('downloadDir').value = config.download_dir;
 
             // 设置文件类型复选框
@@ -239,7 +246,7 @@ async function loadLocalFiles() {
                 document.getElementById('localFilesList').innerHTML = '<p class="text-muted" style="text-align: center; padding: 20px;">暂无本地文件</p>';
             } else {
                 const html = files.map(file => `
-                    <div class="local-file-item">
+                    <div class="local-file-item" id="local-file-item-${file.file_id.replace(':', '-')}" data-file-id="${file.file_id}">
                         <div class="local-file-status">${file.exists ? '✅' : '❌'}</div>
                         <div class="local-file-info">
                             <div class="local-file-name" title="${file.filename}">${file.filename}</div>
@@ -248,7 +255,7 @@ async function loadLocalFiles() {
                                 ${file.exists ? '· ' + formatBytes(file.actual_size) : ''}
                             </div>
                         </div>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteLocalFile('${file.file_id}')">删除</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteLocalFile('${file.file_id}', this)">删除</button>
                     </div>
                 `).join('');
 
@@ -263,10 +270,13 @@ async function loadLocalFiles() {
     }
 }
 
-async function deleteLocalFile(fileId) {
+async function deleteLocalFile(fileId, buttonElement) { // Pass button for loading state
     if (!confirm('确定要删除本地文件吗？Telegram中的文件不会被删除。')) {
         return;
     }
+
+    // Add loading state to the button
+    if (buttonElement) Utils.setLoading(buttonElement, true);
 
     try {
         const response = await fetch('/api/downloads/local-file', {
@@ -279,13 +289,23 @@ async function deleteLocalFile(fileId) {
 
         if (result.status === 'success') {
             showToast('本地文件已删除', 'success');
-            refreshLocalFiles();
+            // Immediately remove the row from the UI
+            const fileItem = document.getElementById(`local-file-item-${fileId.replace(':', '-')}`); // Need to ensure the ID is unique and accessible
+            if (fileItem) fileItem.remove();
+            
+            // Refresh stats in the background to reflect changes, but don't block UI
+            loadLocalStats();
+            // loadLocalFiles(); // No need to re-fetch entire list if removed visually
+
         } else {
             showToast('删除失败', 'error');
         }
     } catch (error) {
         console.error('Failed to delete local file:', error);
         showToast('删除失败', 'error');
+    } finally {
+        // Remove loading state from the button
+        if (buttonElement) Utils.setLoading(buttonElement, false);
     }
 }
 
@@ -309,6 +329,7 @@ document.getElementById('autoDownloadForm').addEventListener('submit', async (e)
 
     const enabled = document.getElementById('autoDownloadEnabled').checked;
     const maxSizeMB = parseInt(document.getElementById('maxSize').value) || 50;
+    const minSizeMB = parseInt(document.getElementById('minSize').value) || 0; // New line
     const downloadDir = document.getElementById('downloadDir').value || '/app/downloads';
 
     const selectedTypes = Array.from(document.querySelectorAll('.fileTypeCheckbox:checked'))
@@ -322,6 +343,7 @@ document.getElementById('autoDownloadForm').addEventListener('submit', async (e)
             body: JSON.stringify({
                 enabled: enabled,
                 max_size: maxSizeMB * 1024 * 1024,
+                min_size: minSizeMB * 1024 * 1024, // New line
                 file_types: selectedTypes,
                 download_dir: downloadDir
             })

@@ -5,6 +5,7 @@ import threading
 import string
 import random
 from datetime import datetime, timedelta
+from typing import Optional
 
 DATA_DIR = os.getenv("DATA_DIR", "app/data")
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -113,7 +114,8 @@ def init_db() -> None:
                     auto_download_enabled INTEGER DEFAULT 0,
                     download_dir TEXT DEFAULT '/app/downloads',
                     download_file_types TEXT DEFAULT 'image,video',
-                    download_max_size INTEGER DEFAULT 52428800
+                    download_max_size INTEGER DEFAULT 52428800,
+                    download_min_size INTEGER DEFAULT 0
                 );
             """)
 
@@ -148,6 +150,13 @@ def init_db() -> None:
                     cursor.execute("ALTER TABLE app_settings ADD COLUMN download_max_size INTEGER DEFAULT 52428800")
                 except Exception as e:
                     logger.error("Failed to add download_max_size: %s", e)
+            
+            if "download_min_size" not in settings_columns:
+                logger.info("Adding download_min_size to app_settings...")
+                try:
+                    cursor.execute("ALTER TABLE app_settings ADD COLUMN download_min_size INTEGER DEFAULT 0")
+                except Exception as e:
+                    logger.error("Failed to add download_min_size: %s", e)
 
             # 确保存在单行设置记录
             cursor.execute("INSERT OR IGNORE INTO app_settings (id) VALUES (1)")
@@ -169,6 +178,90 @@ def init_db() -> None:
 
             conn.commit()
             logger.info("数据库已成功初始化")
+        finally:
+            conn.close()
+
+# Helper function to map mime types to categories
+def _get_file_category_from_mime(mime_type: Optional[str]) -> str:
+    if not mime_type:
+        return "other"
+    if mime_type.startswith("image/"):
+        return "image"
+    if mime_type.startswith("video/"):
+        return "video"
+    if mime_type.startswith("audio/"):
+        return "audio"
+    if mime_type in ["application/pdf", "application/msword", 
+                    "application/vnd.ms-excel", "application/vnd.ms-powerpoint",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation"]:
+        return "document"
+    return "other"
+
+
+def get_all_files(category: Optional[str] = None, sort_by: Optional[str] = None, sort_order: Optional[str] = None) -> list[dict]:
+    """
+    从数据库中获取所有文件的元数据，支持按类别、排序字段和排序顺序过滤。
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            
+            query = "SELECT filename, file_id, filesize, upload_date, short_id, mime_type FROM files"
+            params = []
+            
+            where_clauses = []
+            if category:
+                if category == "image":
+                    where_clauses.append("mime_type LIKE 'image/%'")
+                elif category == "video":
+                    where_clauses.append("mime_type LIKE 'video/%'")
+                elif category == "audio":
+                    where_clauses.append("mime_type LIKE 'audio/%'")
+                elif category == "document":
+                    where_clauses.append("mime_type IN ('application/pdf', 'application/msword', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')")
+                elif category == "other":
+                    # For 'other', filter out known types that have specific categories
+                    known_mime_types = [
+                        "image/%", "video/%", "audio/%", "application/pdf", "application/msword",
+                        "application/vnd.ms-excel", "application/vnd.ms-powerpoint",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                    ]
+                    # Construct NOT LIKE and NOT IN clauses
+                    not_like_clauses = [f"mime_type NOT LIKE '{mt}'" for mt in ["image/%", "video/%", "audio/%"]]
+                    not_in_clauses = [f"mime_type NOT IN ({', '.join(['?' for _ in known_mime_types[3:]])})"]
+                    where_clauses.append(f"(mime_type IS NULL OR ({' AND '.join(not_like_clauses)} AND {not_in_clauses[0]}))")
+                    params.extend(known_mime_types[3:])
+
+
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+            
+            order_map = {
+                "filename": "filename",
+                "filesize": "filesize",
+                "upload_date": "upload_date"
+            }
+            # Default sort_by and sort_order if not provided
+            safe_sort_by = order_map.get(sort_by, "upload_date")
+            safe_sort_order = "DESC" # Default
+
+            if sort_order and sort_order.lower() == "asc":
+                safe_sort_order = "ASC"
+            # else remains "DESC"
+
+            query += f" ORDER BY {safe_sort_by} {safe_sort_order}"
+
+            cursor.execute(query, params)
+            files = []
+            for row in cursor.fetchall():
+                d = dict(row)
+                files.append(d)
+            return files
         finally:
             conn.close()
 
@@ -213,23 +306,6 @@ def add_file_metadata(filename: str, file_id: str, filesize: int, mime_type: str
             # 如果多次重试失败（极低概率），抛错
             raise Exception("Failed to generate unique short_id")
 
-        finally:
-            conn.close()
-
-def get_all_files() -> list[dict]:
-    """从数据库中获取所有文件的元数据。"""
-    with db_lock:
-        conn = get_db_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT filename, file_id, filesize, upload_date, short_id FROM files ORDER BY upload_date DESC")
-            files = []
-            for row in cursor.fetchall():
-                d = dict(row)
-                # 兼容旧数据，如果没有 short_id，这里不做处理，显示时前端可能需要 fallback
-                # 但最好是迁移时补全，这里先返回
-                files.append(d)
-            return files
         finally:
             conn.close()
 
@@ -302,7 +378,7 @@ def get_app_settings_from_db() -> dict:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT bot_token, channel_name, pass_word, picgo_api_key, base_url,
-                       auto_download_enabled, download_dir, download_file_types, download_max_size
+                       auto_download_enabled, download_dir, download_file_types, download_max_size, download_min_size
                 FROM app_settings WHERE id = 1
             """)
             row = cursor.fetchone()
@@ -318,6 +394,7 @@ def get_app_settings_from_db() -> dict:
                 "DOWNLOAD_DIR": row[6] or "/app/downloads",
                 "DOWNLOAD_FILE_TYPES": row[7] or "image,video",
                 "DOWNLOAD_MAX_SIZE": row[8] or 52428800,
+                "DOWNLOAD_MIN_SIZE": row[9] or 0,
             }
         finally:
             conn.close()
@@ -340,7 +417,7 @@ def save_app_settings_to_db(payload: dict) -> None:
                 """
                 UPDATE app_settings
                 SET bot_token = ?, channel_name = ?, pass_word = ?, picgo_api_key = ?, base_url = ?,
-                    auto_download_enabled = ?, download_dir = ?, download_file_types = ?, download_max_size = ?
+                    auto_download_enabled = ?, download_dir = ?, download_file_types = ?, download_max_size = ?, download_min_size = ?
                 WHERE id = 1
                 """,
                 (
@@ -353,6 +430,7 @@ def save_app_settings_to_db(payload: dict) -> None:
                     norm(payload.get("DOWNLOAD_DIR")) or "/app/downloads",
                     norm(payload.get("DOWNLOAD_FILE_TYPES")) or "image,video",
                     payload.get("DOWNLOAD_MAX_SIZE") or 52428800,
+                    payload.get("DOWNLOAD_MIN_SIZE") or 0,
                 )
             )
             conn.commit()
@@ -372,6 +450,7 @@ def reset_app_settings_in_db() -> None:
             "DOWNLOAD_DIR": "/app/downloads",
             "DOWNLOAD_FILE_TYPES": "image,video",
             "DOWNLOAD_MAX_SIZE": 52428800,
+            "DOWNLOAD_MIN_SIZE": 0,
         }
     )
 
@@ -807,4 +886,3 @@ def get_statistics() -> dict:
             }
         finally:
             conn.close()
-
