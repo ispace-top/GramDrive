@@ -1,227 +1,149 @@
-# TgCloud
+# TgCloud: 您的专属 Telegram 私有云存储
 
-[![Docker Hub](https://img.shields.io/docker/v/wapedkj/tgcloud?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/wapedkj/tgcloud)
-[![Docker Pulls](https://img.shields.io/docker/pulls/wapedkj/tgcloud?logo=docker)](https://hub.docker.com/r/wapedkj/tgcloud)
-[![GitHub Release](https://img.shields.io/github/v/release/ispace-top/tgstate-python?label=Release&logo=github)](https://github.com/ispace-top/tgstate-python/releases)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![构建状态](https://github.com/ispace-top/tgstate-python/actions/workflows/docker-image.yml/badge.svg)](https://github.com/ispace-top/tgstate-python/actions/workflows/docker-image.yml)
+[![Python 版本](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://www.python.org/)
+[![框架](https://img.shields.io/badge/框架-FastAPI-green?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![许可证](https://img.shields.io/badge/许可证-MIT-blue.svg)](LICENSE)
+[![Docker 拉取量](https://img.shields.io/docker/pulls/wapedkj/tgcloud?logo=docker)](https://hub.docker.com/r/wapedkj/tgcloud)
 
-**基于 Telegram 的无限私有云存储 & 永久图床系统**
+[English Version](README.en.md)
 
-将您的 Telegram 频道或群组瞬间变身为功能强大的私有网盘与图床。无需服务器存储空间，借助 Telegram 的无限云端能力，实现文件管理、外链分享、图片托管等功能。
+**将您的 Telegram 账号转变为一个功能丰富、永久在线的私有云存储和媒体中心。**
 
----
-
-## ✅ 一键安装 / 一键更新（保留数据，推荐）
-
-默认端口 **8000**（最通用）
-```bash
-docker volume create tgcloud-data >/dev/null 2>&1; docker rm -f tgcloud >/dev/null 2>&1 || true; docker pull wapedkj/tgcloud:latest && docker run -d --name tgcloud --restart unless-stopped -p 8000:8000 -v tgcloud-data:/app/data wapedkj/tgcloud:latest
-```
-
-自定义端口 **15767**（可选）
-```bash
-docker volume create tgcloud-data >/dev/null 2>&1; docker rm -f tgcloud >/dev/null 2>&1 || true; docker pull wapedkj/tgcloud:latest && docker run -d --name tgcloud --restart unless-stopped -p 15767:8000 -v tgcloud-data:/app/data wapedkj/tgcloud:latest
-```
-
-## 🧨 彻底重装（清空所有数据，不可逆）
-
-```bash
-docker rm -f tgcloud >/dev/null 2>&1 || true; docker volume rm tgcloud-data >/dev/null 2>&1 || true; docker volume create tgcloud-data >/dev/null 2>&1; docker pull wapedkj/tgcloud:latest && docker run -d --name tgcloud --restart unless-stopped -p 15767:8000 -v tgcloud-data:/app/data wapedkj/tgcloud:latest
-```
+TgCloud 利用 Telegram 无限的存储能力，提供一个优雅的网页界面，让您轻松管理文件、创建分享链接，甚至可以作为 PicGo 等服务的高效图床。所有数据都安全地存储在您选择的私有频道或群组中。
 
 ---
 
-## ⚙️ 首次配置教程
+<!-- 建议在此处添加网页界面的截图或 GIF！ -->
+<!-- ![TgCloud 截图](https://your-image-host.com/tgcloud_screenshot.png) -->
 
-部署后首次访问网页，会进入“引导页”设置管理员密码。之后请进入 **“系统设置”** 完成核心配置。
+## ✨ 主要功能
 
-### 第一步：获取 BOT_TOKEN
-1.  在 Telegram 搜索 **[@BotFather](https://t.me/BotFather)** 并点击“开始”。
-2.  发送指令 `/newbot` 创建新机器人。
-3.  按提示输入 Name（名字）和 Username（用户名，必须以 `bot` 结尾）。
-4.  成功后，BotFather 会发送一条消息，其中 `Use this token to access the HTTP API:` 下方的那串字符就是 **BOT_TOKEN**。
+-   **无限存储**：存储容量仅受 Telegram 本身限制。
+-   **现代化网页界面**：简洁、响应式、直观的用户界面，支持亮色和暗色模式。
+-   **文件管理**：轻松上传、下载、删除和搜索您的文件。支持批量操作。
+-   **拖拽上传**：只需将文件拖拽到浏览器中即可无缝上传。大文件自动分块。
+-   **短链接分享**：生成简洁的分享链接（例如 `/d/AbC123`），并自动适配当前访问域名。
+-   **图床模式**：专用的图片画廊视图。支持一键复制 URL、Markdown 或 HTML 格式链接，完全兼容 PicGo。
+-   **统计仪表板**：全面的仪表板，可视化您的存储使用情况、文件类型分布、下载次数等。
+-   **下载管理器**：配置从您的频道自动下载文件到本地服务器存储，并直接从 UI 管理这些本地文件。
+-   **高级文件服务**：
+    -   **流媒体支持**：完全支持 HTTP Range 请求，用于流式传输音频和视频文件。无需等待即可随意拖动媒体播放进度。
+    -   **智能内容处理**：自动在浏览器中预览可查看文件（图片、PDF、视频），并触发其他文件的下载。
+    -   **强制下载**：通过在 URL 中添加 `?download=1` 参数，可强制下载任何文件。
+-   **安全与隐私**：
+    -   您的文件存储在您自己的私有频道/群组中。
+    -   网页界面由您选择的密码保护。
+    -   支持 API Key 认证，用于程序化上传（例如 PicGo）。
+-   **实时更新**：文件列表会随着新文件的上传或删除而实时更新，这得益于服务器发送事件（SSE）。
+-   **轻松部署**：可使用 Docker 即时部署，或直接从源代码运行。
 
-### 第二步：获取 Chat ID (CHANNEL_NAME)
-1.  **准备群组/频道**：
-    *   您可以新建一个群组或频道（公开或私密均可）。
-    *   **关键操作**：必须将您的机器人拉入该群组/频道，并设为**管理员**（给予读取消息和发送消息的权限）。
-2.  **获取 ID**：
-    *   在群组/频道内随便发送一条文本消息。
-    *   在浏览器访问：`https://api.telegram.org/bot<您的Token>/getUpdates`
-        *   *请将 `<您的Token>` 替换为实际的 BOT_TOKEN。*
-    *   查看返回的 JSON，找到 `chat` 字段下的 `id`。
-        *   通常是以 `-100` 开头的数字（例如 `-1001234567890`）。
-    *   **如果是公开频道**：也可以直接使用频道用户名（例如 `@my_channel_name`）。
+## 🛠️ 技术栈
 
-> **💡 提示**：如果 `getUpdates` 返回空 (`"result": []`)，请尝试在群里多发几条消息，或者去 @BotFather 关闭机器人的 Group Privacy 模式（`/mybots` -> 选择机器人 -> Bot Settings -> Group Privacy -> Turn off）。
+| 组件         | 技术               |
+| :----------- | :----------------- |
+| **后端框架**   | FastAPI            |
+| **Telegram Bot 库** | `python-telegram-bot` |
+| **异步 HTTP 客户端** | `httpx`            |
+| **数据库**     | SQLite             |
+| **Web 服务器** | Uvicorn            |
+| **实时事件**   | `sse-starlette`    |
+| **配置管理**   | `pydantic-settings` |
+| **代码检查与格式化** | Ruff               |
+| **容器化**     | Docker             |
 
-### 第三步：填写配置
-回到网页的“系统设置”，填入：
-*   **BOT_TOKEN**: 第一步获取的 Token。
-*   **CHANNEL_NAME**: 第二步获取的 Chat ID（推荐使用数字 ID）。
-*   **BASE_URL** (可选): 您用于对外分享的域名或 IP（例如 `http://1.2.3.4:8000` 或 `https://pan.example.com`）。
-    *   *注意：系统已优化，不填也能自动生成可用的分享链接，但在反向代理环境下，为了 Bot 回复链接的准确性，建议填写。*
+## 🚀 快速开始
 
-保存后即可开始使用！
+您可以通过 Docker（推荐用于生产环境）部署 TgCloud，也可以从源代码直接运行（用于开发）。
 
----
+### 1. Docker 部署（推荐）
 
-## 🌐 反向代理说明 (Caddy/Nginx)
-
-如果您使用 Caddy/Nginx 等反向代理工具，请注意以下几点：
-
-### 1. Cookie 与 HTTPS
-系统已优化 Cookie 策略，支持在 HTTP (IP:Port) 和 HTTPS 环境下自动适配。但如果您在反代层开启了 HTTPS，请确保将请求头正确透传。
-
-### 2. Caddy 配置示例
-在您的 `Caddyfile` 中追加以下配置（仅供参考）：
-
-```caddy
-buyi.us.ci {
-    encode gzip
-    reverse_proxy 127.0.0.1:8000
-}
-```
-
-### 3. Nginx 配置示例
-确保透传 `Host` 和 `X-Forwarded-*` 头：
-
-```nginx
-location / {
-    proxy_pass http://127.0.0.1:8000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
-
----
-
-## ❓ 常见问题排查
-
-### Q: 登录后跳转回登录页 / 无法登录？
-*   **检查密码**：设置密码时系统会自动去除首尾空格，请确认输入的密码无误。
-*   **Cookie 问题**：如果您在本地开发环境使用 `localhost`，通常没问题。如果是 IP 访问，请确保浏览器没有禁用 Cookie。尝试点击浏览器地址栏的小锁/图标查看 Cookie 是否写入。
-*   **重置配置**：如果实在无法登录，可以删除 `data/file_metadata.db` 中的 `app_settings` 表记录（需懂 SQL），或直接删除数据库文件（会丢失文件索引，不推荐）。
-
-### Q: 退出登录点击无反应或报错？
-*   退出登录使用了 JavaScript 弹窗确认，请确保页面 JS 已加载（查看控制台是否有报错）。
-*   如果提示网络错误，请刷新页面重试。
-
-### Q: 复制链接失败？
-*   在非 HTTPS 环境下（如 HTTP IP 访问），浏览器可能会限制剪贴板 API。系统已内置回退机制，如果自动复制失败，会弹窗显示链接供您手动复制。
-*   建议配置 HTTPS 反代以获得最佳体验。
-
-### Q: 删除文件后列表不刷新？
-*   删除操作是异步的。如果删除成功但列表未消失，可能是网络延迟。
-*   请尝试刷新页面。如果文件仍在，说明删除失败（可能是 Bot 权限不足，请检查 Bot 是否为频道管理员）。
-
-### Q: 分享链接是 127.0.0.1？
-*   系统前端会自动根据您当前的浏览器地址生成分享链接。如果您看到 127.0.0.1，说明您就是通过 127.0.0.1 访问的。
-*   请尝试用公网 IP 或域名访问网页，分享链接会自动变更为对应的 IP/域名。
-
----
-
-## 📂 功能特性
-*   **无限存储**：依赖 Telegram 频道，容量无上限。
-*   **短链接分享**：生成简洁的分享链接（`/d/AbC123`），自动适配当前访问域名。
-*   **拖拽上传**：支持批量拖拽上传，大文件自动分块。
-*   **图床模式**：支持 Markdown/HTML 格式一键复制，适配 PicGo。
-*   **隐私安全**：所有数据存储在您的私有频道，Web 端支持密码保护。
-
----
-
-## 📺 在线预览 / 强制下载 / Range 说明（验收命令）
-
-系统对分享链接 (`/d/{id}`) 提供了智能的 Content-Disposition 策略和流式支持：
-
-1.  **默认策略**：
-    *   **可预览类型**（图片、PDF、文本、代码、音视频）：返回 `Content-Disposition: inline`，浏览器会尝试直接在标签页中打开预览。
-    *   **不可预览类型**（压缩包、二进制等）：返回 `Content-Disposition: attachment`，浏览器会直接触发下载。
-2.  **强制下载**：
-    *   在链接后添加 `?download=1` 参数（例如 `/d/GNW2KH?download=1`），无论文件类型，服务器一律返回 `attachment`，强制浏览器下载文件。
-3.  **Range 支持（音视频播放）**：
-    *   对于 `video/*` 和 `audio/*` 类型，服务器完整支持 HTTP Range 请求。
-    *   响应包含 `206 Partial Content`、`Accept-Ranges: bytes` 和 `Content-Range` 头。
-    *   这确保了在移动端（iOS/Android）和桌面端播放器中，您可以随意拖动进度条，支持断点续传。
-4.  **HEAD 请求支持**：
-    *   完整支持 `HEAD` 方法，返回与 `GET` 一致的 Headers（包含文件大小、类型等），方便反向代理缓存或下载工具探测。
-5.  **浏览器兼容性提示**：
-    *   不同浏览器对 PDF、视频编码（如 HEVC/MKV）的内置支持程度不同。如果遇到无法预览的情况，请尝试使用 `?download=1` 下载，或更换 Chrome/Edge 等现代浏览器。
-
-### 🚀 一键验收命令
-
-您可以在 Linux/macOS 终端中直接复制运行以下命令，验证服务器的响应头是否符合预期（请替换 `BASE_URL` 和 `ID` 为您的实际值）：
+这是最简单、最可靠的上手方式。
 
 ```bash
-bash -lc '
-set -euo pipefail
-# 请修改为您自己的域名和文件ID
-BASE="${BASE_URL:-https://pan.777256.xyz}"
-ID="${ID:-GNW2KH}"
-URL="${BASE%/}/d/${ID}"
+# 1. 创建一个持久化卷用于存储数据（数据库等）
+docker volume create tgcloud_data
 
-# 获取最终跳转地址（处理可能的 HTTP->HTTPS 重定向）
-FINAL="$(curl -sS -L -o /dev/null -w "%{url_effective}" --max-time 15 "$URL" || true)"; [ -n "$FINAL" ] || FINAL="$URL"
-
-echo "URL=$URL"
-echo "FINAL=$FINAL"
-echo
-
-echo "== 1. HEAD 请求 (应返回 200/206，不应是 405) =="
-curl -sS -I --max-time 15 "$FINAL" | egrep -i "HTTP/|content-type|content-disposition|accept-ranges|content-range|content-length|x-content-type-options" || true
-echo
-
-echo "== 2. Default GET (可预览类型应 inline; 不可预览应 attachment) =="
-curl -sS -L -D - -o /dev/null --max-time 20 "$FINAL" | egrep -i "HTTP/|content-type:|content-disposition:|accept-ranges:|content-range:|content-length:|x-content-type-options:" || true
-echo
-
-echo "== 3. GET ?download=1 (必须 attachment) =="
-curl -sS -L -D - -o /dev/null --max-time 20 "$FINAL?download=1" | egrep -i "HTTP/|content-type:|content-disposition:" || true
-echo
-
-echo "== 4. Range bytes=0-1023 (音视频应 206 + Content-Range) =="
-curl -sS -L -D - -o /dev/null --max-time 20 -H "Range: bytes=0-1023" "$FINAL" | egrep -i "HTTP/|accept-ranges:|content-range:|content-length:" || true
-'
+# 2. 拉取最新镜像并运行容器
+# 将 8000 替换为您的主机上偏好的任何端口
+docker run -d \
+  --name tgcloud \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v tgcloud_data:/app/data \
+  wapedkj/tgcloud:latest
 ```
 
-**✅ 验收通过标准：**
-*   **HEAD**: 返回状态码 200 OK（或 302 跳转后的 200），且包含 `Content-Type` 等头信息。
-*   **Default**: 对于 PDF/图片，`Content-Disposition` 应包含 `inline`。
-*   **Download**: 带 `?download=1` 时，`Content-Disposition` 必须包含 `attachment`。
-*   **Range**: 对于音视频文件，应返回 `HTTP/1.1 206 Partial Content` 且包含 `Content-Range` 头。
+运行命令后，通过 `http://<您的服务器IP>:8000` 访问网页界面。
 
----
-## 免责声明与合规使用（重要）
+### 2. 本地开发（从源代码）
 
-本项目基于 **Telegram Bot + 频道** 实现个人文件管理/分享能力。
+此方法适用于希望修改代码的开发者。
 
-- Telegram 的 Bot 平台条款对“将其用于**云存储类外部服务**”存在限制与风险  
-- 本项目 **仅供学习与个人用途**  
-- **严禁**用于以下场景：  
-  - 侵权内容（盗版资源、未授权转载/传播等）  
-  - 任何违法用途  
-  - 公开资源分发/公共下载站  
-  - 商业网盘/对外提供存储服务
+```bash
+# 1. 克隆仓库
+git clone https://github.com/ispace-top/tgstate-python.git
+cd tgstate-python
 
-使用本项目产生的任何后果由使用者自行承担；开发者不对由此造成的封号、数据丢失、法律风险等负责。
+# 2. 创建并激活虚拟环境
+python -m venv venv
+# 在 Windows 上：
+# venv\Scripts\activate
+# 在 macOS/Linux 上：
+source venv/bin/activate
 
----
+# 3. 安装依赖
+pip install -r requirements.txt
 
-## 🙏 致谢
+# 4. 配置您的环境
+cp .env.example .env
+# 现在，编辑 .env 文件并填入您的设置（请参阅下面的配置说明）
 
-本项目基于 [buyi06/tgstate-python](https://github.com/buyi06/tgstate-python) 进行二次开发和改进。
+# 5. 运行开发服务器
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-感谢原作者 [@buyi06](https://github.com/buyi06) 提供的优秀开源项目！
+应用程序将通过 `http://localhost:8000` 访问。
 
-**主要改进：**
-- 修复了文件上传认证bug（session验证逻辑错误）
-- 优化项目结构和配置
-- 改进Docker部署方式
-- 持续维护和功能增强
+## ⚙️ 初始配置
 
----
+首次启动后，系统会提示您设置管理员密码。登录后，请导航到 **系统设置** 完成所有核心配置。
 
-## 📄 License
-MIT License
+#### 步骤 1: 从 BotFather 获取 `BOT_TOKEN`
+
+1.  打开 Telegram 并搜索官方 **[@BotFather](https://t.me/BotFather)**。
+2.  开始聊天并发送 `/newbot` 命令。
+3.  按照提示设置您的机器人的名称和用户名（用户名必须以 `bot` 结尾）。
+4.  成功后，BotFather 会发送一条消息，其中 `Use this token to access the HTTP API:` 下方的那串字符就是您的 **`BOT_TOKEN`**。
+
+#### 步骤 2: 获取 `CHANNEL_NAME` (聊天 ID)
+
+1.  在 Telegram 中创建一个新的**私有**频道或群组。
+2.  将您刚刚创建的机器人添加为该频道/群组的**管理员**。
+3.  向您的频道/群组发送任意消息（例如“hello”）。
+4.  将该消息转发给机器人 **[@userinfobot](https://t.me/userinfobot)**。
+5.  它将回复详细信息，包括 `From Chat` ID。复制该 ID，它通常是一个以 `-100...` 开头的数字。这就是您的 **`CHANNEL_NAME`**。
+
+现在，在网页 UI 的“系统设置”页面中填入这些值。
+
+## 🔧 配置变量
+
+所有设置都可以通过环境变量（在 `.env` 文件或 Docker 环境中）或在首次启动后通过网页 UI 进行配置。
+
+| 变量          | 描述                                     | 默认值          |
+| :----------- | :--------------------------------------- | :-------------- |
+| `BOT_TOKEN`   | **必需。** 您的 Telegram Bot Token。     | `""`            |
+| `CHANNEL_NAME` | **必需。** 您的私有频道/群组的 ID。      | `""`            |
+| `PASS_WORD`   | 网页界面的管理员密码。如果为空，则无需认证。 | `""`            |
+| `BASE_URL`    | 您的实例对外公开的 URL（例如 `https://tg.example.com`）。可选，但为了 Bot 回复链接的准确性，建议填写。 | `""`            |
+| `PICGO_API_KEY`| 用于 PicGo 上传的 API Key。请设置一个安全的随机字符串。 | `""`            |
+
+## 🙏 致谢与 Fork 信息
+
+本项目是 **[ispace-top/tgstate-python](https://github.com/ispace-top/tgstate-python)** 仓库的一个 Fork，并在此基础上进行了大量增强。
+
+衷心感谢原作者为本项目奠定了出色的基础。此 Fork 旨在通过新功能、错误修复和略有不同的架构方向来继续开发。
+
+## 📄 许可证
+
+本项目采用 **MIT 许可证**。详情请参阅 [LICENSE](LICENSE) 文件。
