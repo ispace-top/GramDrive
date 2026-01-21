@@ -66,6 +66,12 @@
                 </div>
                 <div class="text-sm text-muted mt-4">用于配置 PicGo 图床上传。</div>
             </div>
+            <div class="input-group">
+                <label class="input-label">下载线程数</label>
+                <input type="number" class="input-field" name="DOWNLOAD_THREADS" id="DOWNLOAD_THREADS"
+                       min="1" max="16" placeholder="4">
+                <div class="text-sm text-muted mt-4">多线程下载加速，范围: 1-16，推荐值: 4-8。仅对 >5MB 单文件生效。</div>
+            </div>
         </div>
 
         <!-- 维护更新 -->
@@ -149,10 +155,16 @@ async function saveConfig(apply = false) {
             // 如果这些字段为空，且之前是已设置状态，则不发送该字段，保持原值不变
             if (!value && window._initialSettingsSetState && window._initialSettingsSetState[key + '_SET']) {
                 // 不将空字符串发送到后端，后端会保持原值
-                continue; 
+                continue;
             }
         }
-        data[key] = value;
+        // Convert DOWNLOAD_THREADS to integer and validate range
+        if (key === 'DOWNLOAD_THREADS') {
+            const threads = parseInt(value) || 4;
+            data[key] = Math.max(1, Math.min(16, threads));
+        } else {
+            data[key] = value;
+        }
     }
     
     // 如果密码为空，从提交数据中移除，避免覆盖为空字符串

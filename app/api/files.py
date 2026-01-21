@@ -11,7 +11,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from .. import database
+from ..core.config import get_app_settings
 from ..core.http_client import get_http_client
+from ..services.download_accelerator import DownloadAccelerator
 from ..services.telegram_service import TelegramService, get_telegram_service
 from .common import http_error
 
@@ -147,6 +149,31 @@ async def serve_file(
 
     file_size = await get_remote_file_size()
 
+    # Multi-threaded download acceleration for full file downloads
+    settings = get_app_settings()
+    thread_count = settings.get("DOWNLOAD_THREADS", 4)
+    use_acceleration = (
+        thread_count > 1
+        and file_size
+        and file_size > 5 * 1024 * 1024  # >5MB
+        and request.method != "HEAD"
+        and not range_header  # Only for full downloads
+    )
+
+    if use_acceleration:
+        accelerator = DownloadAccelerator(client, thread_count)
+        supports_range, _ = await accelerator.supports_range_requests(download_url)
+
+        if supports_range:
+            async def accelerated_streamer():
+                async for chunk in accelerator.accelerated_download(download_url, file_size):
+                    yield chunk
+
+            if file_size:
+                common_headers["Content-Length"] = str(file_size)
+
+            return StreamingResponse(accelerated_streamer(), headers=common_headers)
+
     # Handle Range (Only for GET)
     if range_header and file_size and request.method != "HEAD":
         # Parse Range: bytes=0-1024
@@ -255,8 +282,8 @@ async def download_file_short(
 @router.get("/api/files")
 async def get_files_list(
     category: Optional[str] = Query(None),
-    sort_by: Optional[str] = Query(None, regex="^(filename|filesize|upload_date)$"), # Add sort_by
-    sort_order: Optional[str] = Query(None, regex="^(asc|desc)$") # Add sort_order
+    sort_by: Optional[str] = Query(None, pattern="^(filename|filesize|upload_date)$"),
+    sort_order: Optional[str] = Query(None, pattern="^(asc|desc)$")
 ):
     # Pass parameters to get_all_files
     return database.get_all_files(category=category, sort_by=sort_by, sort_order=sort_order)
@@ -303,8 +330,12 @@ class BatchDeleteRequest(BaseModel):
 @router.post("/api/batch_delete")
 async def batch_delete_files(
     request_data: BatchDeleteRequest,
-    telegram_service: TelegramService = Depends(get_telegram_service),
 ):
+    try:
+        telegram_service = get_telegram_service()
+    except Exception:
+        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，批量删除不可用", code="cfg_missing")
+
     successful_deletions = []
     failed_deletions = []
 

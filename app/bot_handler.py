@@ -227,11 +227,12 @@ async def handle_deleted_message(update: Update, context: ContextTypes.DEFAULT_T
             await file_update_queue.put(json.dumps(delete_event))
 
 def create_bot_app(settings: dict) -> Application:
-    if not settings.get("BOT_TOKEN"):
-        logger.error(".env 文件中未设置 BOT_TOKEN，机器人无法创建")
+    bot_token = (settings.get("BOT_TOKEN") or "").strip()
+    if not bot_token:
+        logger.warning("BOT_TOKEN 未配置，机器人功能将不可用")
         raise ValueError("BOT_TOKEN not configured.")
 
-    application = Application.builder().token(settings["BOT_TOKEN"]).build()
+    application = Application.builder().token(bot_token).build()
     application.bot_data["settings"] = settings
 
     # --- 添加处理器 ---

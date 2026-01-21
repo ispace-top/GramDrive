@@ -23,17 +23,6 @@
                     <option value="asc">升序</option>
                 </select>
             </div>
-            <!-- Category Filter -->
-            <div class="input-group" style="margin-bottom: 0; max-width: 180px; width: 100%;">
-                <select id="file-category-filter" class="input-field">
-                    <option value="">所有文件</option>
-                    <option value="image">图片</option>
-                    <option value="video">视频</option>
-                    <option value="audio">音频</option>
-                    <option value="document">文档</option>
-                    <option value="other">其他</option>
-                </select>
-            </div>
             <!-- Search Input -->
             <div class="input-group" style="margin-bottom: 0; max-width: 300px; width: 100%;">
                 <input type="text" id="file-search" class="input-field" placeholder="搜索文件..." style="width: 100%;">
@@ -75,17 +64,92 @@
         </div>
     </div>
 
+    <!-- Category Tabs -->
+    <div style="margin-bottom: 20px; border-bottom: 2px solid var(--border-color);">
+        <div style="display: flex; gap: 0;">
+            <button class="category-tab active" data-category=""
+                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
+                           font-weight: 500; border-bottom: 3px solid var(--primary-color);
+                           color: var(--primary-color);">
+                全部
+            </button>
+            <button class="category-tab" data-category="image"
+                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
+                           font-weight: 500; border-bottom: 3px solid transparent;
+                           color: var(--text-secondary);">
+                图片
+            </button>
+            <button class="category-tab" data-category="video"
+                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
+                           font-weight: 500; border-bottom: 3px solid transparent;
+                           color: var(--text-secondary);">
+                视频
+            </button>
+            <button class="category-tab" data-category="audio"
+                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
+                           font-weight: 500; border-bottom: 3px solid transparent;
+                           color: var(--text-secondary);">
+                音频
+            </button>
+            <button class="category-tab" data-category="document"
+                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
+                           font-weight: 500; border-bottom: 3px solid transparent;
+                           color: var(--text-secondary);">
+                文档
+            </button>
+            <button class="category-tab" data-category="other"
+                    style="padding: 12px 20px; border: none; background: none; cursor: pointer;
+                           font-weight: 500; border-bottom: 3px solid transparent;
+                           color: var(--text-secondary);">
+                其他
+            </button>
+        </div>
+    </div>
+
     <!-- File List -->
     <div class="card" style="padding: 0; overflow: hidden;">
         <div class="table-responsive">
             <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
                 <thead>
                     <tr style="border-bottom: 1px solid var(--border-color); background: var(--bg-surface-hover);">
-                        <th style="padding: 12px 16px; width: 40px;"><input type="checkbox" id="select-all-checkbox"></th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: var(--text-secondary);">文件名</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: var(--text-secondary); width: 100px;">大小</th>
-                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; color: var(--text-secondary); width: 120px;">日期</th>
-                        <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px; color: var(--text-secondary); width: 140px;">操作</th>
+                        <th style="padding: 12px 16px; width: 40px;">
+                            <input type="checkbox" id="select-all-checkbox">
+                        </th>
+                        <th class="sortable-header" data-sort="filename"
+                            style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px;
+                                   color: var(--text-secondary); cursor: pointer; user-select: none;">
+                            文件名
+                            <svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 style="display: inline-block; vertical-align: middle; opacity: 0.3;">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </th>
+                        <th class="sortable-header" data-sort="filesize"
+                            style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px;
+                                   color: var(--text-secondary); width: 100px; cursor: pointer; user-select: none;">
+                            大小
+                            <svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 style="display: inline-block; vertical-align: middle; opacity: 0.3;">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </th>
+                        <th class="sortable-header active" data-sort="upload_date"
+                            style="padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px;
+                                   color: var(--text-secondary); width: 120px; cursor: pointer; user-select: none;">
+                            日期
+                            <svg class="sort-icon active desc" width="12" height="12" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 style="display: inline-block; vertical-align: middle; opacity: 1;
+                                        color: var(--primary-color);">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </th>
+                        <th style="padding: 12px 16px; text-align: right; font-weight: 600; font-size: 13px;
+                                   color: var(--text-secondary); width: 140px;">
+                            操作
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="file-list-disk">

@@ -81,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressArea = document.getElementById('prog-zone');
     const doneArea = document.getElementById('done-zone');
     const searchInput = document.getElementById('file-search');
-    const categoryFilter = document.getElementById('file-category-filter');
     const sortByFilter = document.getElementById('file-sort-by'); // New global variable for sort by filter
     const sortOrderFilter = document.getElementById('file-sort-order'); // New global variable for sort order filter
 
@@ -130,20 +129,67 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Search & Category & Sort Functionality ---
     const applyFiltersAndSort = () => {
         const term = searchInput ? searchInput.value : '';
-        const category = categoryFilter ? categoryFilter.value : '';
-        const sortBy = sortByFilter ? sortByFilter.value : '';
-        const sortOrder = sortOrderFilter ? sortOrderFilter.value : '';
+        const activeTab = document.querySelector('.category-tab.active');
+        const category = activeTab ? (activeTab.dataset.category || '') : '';
+        const sortBy = sortByFilter ? sortByFilter.value : 'upload_date';
+        const sortOrder = sortOrderFilter ? sortOrderFilter.value : 'desc';
+
+        // Save sort preferences to LocalStorage
+        localStorage.setItem('file-sort-by', sortBy);
+        localStorage.setItem('file-sort-order', sortOrder);
+
         fetchAndRenderFiles(category, term, sortBy, sortOrder);
     };
+
+    // Load saved sort preferences from LocalStorage
+    const savedSortBy = localStorage.getItem('file-sort-by') || 'upload_date';
+    const savedSortOrder = localStorage.getItem('file-sort-order') || 'desc';
+
+    if (sortByFilter) sortByFilter.value = savedSortBy;
+    if (sortOrderFilter) sortOrderFilter.value = savedSortOrder;
+
+    // Update visual indicators for initial sort
+    document.querySelectorAll('.sortable-header').forEach(h => h.classList.remove('active'));
+    document.querySelectorAll('.sort-icon').forEach(icon => {
+        icon.classList.remove('active', 'asc', 'desc');
+        icon.style.opacity = '0.3';
+        icon.style.color = '';
+    });
+    const activeHeader = document.querySelector(`.sortable-header[data-sort="${savedSortBy}"]`);
+    if (activeHeader) {
+        activeHeader.classList.add('active');
+        const icon = activeHeader.querySelector('.sort-icon');
+        if (icon) {
+            icon.classList.add('active', savedSortOrder);
+            icon.style.opacity = '1';
+            icon.style.color = 'var(--primary-color)';
+        }
+    }
+
 
     if (searchInput) {
         searchInput.addEventListener('input', applyFiltersAndSort);
     }
 
-    if (categoryFilter) {
-        categoryFilter.addEventListener('change', applyFiltersAndSort);
-    }
-    
+    // Category Tab switching
+    document.addEventListener('click', (e) => {
+        const tab = e.target.closest('.category-tab');
+        if (!tab) return;
+
+        // Update active state
+        document.querySelectorAll('.category-tab').forEach(t => {
+            t.classList.remove('active');
+            t.style.borderBottomColor = 'transparent';
+            t.style.color = 'var(--text-secondary)';
+        });
+        tab.classList.add('active');
+        tab.style.borderBottomColor = 'var(--primary-color)';
+        tab.style.color = 'var(--primary-color)';
+
+        // Refresh file list with selected category
+        applyFiltersAndSort();
+    });
+
     if (sortByFilter) {
         sortByFilter.addEventListener('change', applyFiltersAndSort);
     }
@@ -151,6 +197,43 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sortOrderFilter) {
         sortOrderFilter.addEventListener('change', applyFiltersAndSort);
     }
+
+    // Table header sorting
+    document.addEventListener('click', (e) => {
+        const header = e.target.closest('.sortable-header');
+        if (!header) return;
+
+        const sortField = header.dataset.sort;
+        const currentSortBy = sortByFilter ? sortByFilter.value : 'upload_date';
+        const currentSortOrder = sortOrderFilter ? sortOrderFilter.value : 'desc';
+
+        // If clicking same column, toggle order; otherwise default to desc
+        let newOrder = 'desc';
+        if (sortField === currentSortBy) {
+            newOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
+        }
+
+        // Update dropdown values
+        if (sortByFilter) sortByFilter.value = sortField;
+        if (sortOrderFilter) sortOrderFilter.value = newOrder;
+
+        // Update visual indicators
+        document.querySelectorAll('.sortable-header').forEach(h => h.classList.remove('active'));
+        document.querySelectorAll('.sort-icon').forEach(icon => {
+            icon.classList.remove('active', 'asc', 'desc');
+            icon.style.opacity = '0.3';
+            icon.style.color = '';
+        });
+        header.classList.add('active');
+        const icon = header.querySelector('.sort-icon');
+        icon.classList.add('active', newOrder);
+        icon.style.opacity = '1';
+        icon.style.color = 'var(--primary-color)';
+
+        // Apply sorting
+        applyFiltersAndSort();
+    });
+
 
     // --- Upload Logic ---
     if (uploadArea && fileInput) {
@@ -434,7 +517,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileListContainer = document.getElementById('file-list-disk');
     if (fileListContainer) {
         // Initial fetch on load, applying current filter and sort selections
-        const initialCategory = categoryFilter ? categoryFilter.value : '';
+        const activeTab = document.querySelector('.category-tab.active');
+        const initialCategory = activeTab ? (activeTab.dataset.category || '') : '';
         const initialSortBy = sortByFilter ? sortByFilter.value : 'upload_date'; // Default sort
         const initialSortOrder = sortOrderFilter ? sortOrderFilter.value : 'desc'; // Default order
         fetchAndRenderFiles(initialCategory, '', initialSortBy, initialSortOrder);
@@ -516,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
         } else {
             html = `
-                <tr class="file-item" style="border-bottom: 1px solid var(--border-color);" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}">
+                <tr class="file-item clickable-file-row" style="border-bottom: 1px solid var(--border-color);" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}" data-file-type="${file.mime_type || 'application/octet-stream'}">
                     <td style="padding: 12px 16px;"><input type="checkbox" class="file-checkbox" data-file-id="${file.file_id}"></td>
                     <td style="padding: 12px 16px;">
                         <div style="display: flex; align-items: center; gap: 8px;">

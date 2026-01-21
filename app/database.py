@@ -158,6 +158,13 @@ def init_db() -> None:
                 except Exception as e:
                     logger.error("Failed to add download_min_size: %s", e)
 
+            if "download_threads" not in settings_columns:
+                logger.info("Adding download_threads to app_settings...")
+                try:
+                    cursor.execute("ALTER TABLE app_settings ADD COLUMN download_threads INTEGER DEFAULT 4")
+                except Exception as e:
+                    logger.error("Failed to add download_threads: %s", e)
+
             # 确保存在单行设置记录
             cursor.execute("INSERT OR IGNORE INTO app_settings (id) VALUES (1)")
 
@@ -378,7 +385,8 @@ def get_app_settings_from_db() -> dict:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT bot_token, channel_name, pass_word, picgo_api_key, base_url,
-                       auto_download_enabled, download_dir, download_file_types, download_max_size, download_min_size
+                       auto_download_enabled, download_dir, download_file_types, download_max_size, download_min_size,
+                       download_threads
                 FROM app_settings WHERE id = 1
             """)
             row = cursor.fetchone()
@@ -395,6 +403,7 @@ def get_app_settings_from_db() -> dict:
                 "DOWNLOAD_FILE_TYPES": row[7] or "image,video",
                 "DOWNLOAD_MAX_SIZE": row[8] or 52428800,
                 "DOWNLOAD_MIN_SIZE": row[9] or 0,
+                "DOWNLOAD_THREADS": row[10] or 4,
             }
         finally:
             conn.close()
@@ -417,7 +426,8 @@ def save_app_settings_to_db(payload: dict) -> None:
                 """
                 UPDATE app_settings
                 SET bot_token = ?, channel_name = ?, pass_word = ?, picgo_api_key = ?, base_url = ?,
-                    auto_download_enabled = ?, download_dir = ?, download_file_types = ?, download_max_size = ?, download_min_size = ?
+                    auto_download_enabled = ?, download_dir = ?, download_file_types = ?, download_max_size = ?, download_min_size = ?,
+                    download_threads = ?
                 WHERE id = 1
                 """,
                 (
@@ -431,6 +441,7 @@ def save_app_settings_to_db(payload: dict) -> None:
                     norm(payload.get("DOWNLOAD_FILE_TYPES")) or "image,video",
                     payload.get("DOWNLOAD_MAX_SIZE") or 52428800,
                     payload.get("DOWNLOAD_MIN_SIZE") or 0,
+                    payload.get("DOWNLOAD_THREADS") or 4,
                 )
             )
             conn.commit()

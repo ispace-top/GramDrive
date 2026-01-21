@@ -358,3 +358,54 @@ input:checked + .slider:before { transform: translateX(20px); }
 input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
 .slider.round { border-radius: 24px; }
 .slider.round:before { border-radius: 50%; }
+
+/* Clickable file row hover effects */
+.clickable-file-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.clickable-file-row:hover {
+    background-color: var(--bg-surface-hover) !important;
+}
+
+.clickable-file-row:hover .text-primary {
+    text-decoration: underline;
+}
+
+/* Sortable header styles */
+.sortable-header:hover {
+    background-color: var(--bg-surface-hover);
+}
+
+.sort-icon {
+    opacity: 0.3;
+    transition: all 0.2s;
+}
+
+.sort-icon.active {
+    opacity: 1;
+    color: var(--primary-color);
+}
+
+.sort-icon.asc {
+    transform: rotate(180deg);
+}
+
+.sort-icon.desc {
+    transform: rotate(0deg);
+}
+
+/* Category tab styles */
+.category-tab {
+    transition: all 0.2s ease;
+}
+
+.category-tab:hover {
+    background-color: var(--bg-surface-hover);
+    color: var(--text-primary) !important;
+}
+
+.category-tab.active {
+    font-weight: 600;
+}
