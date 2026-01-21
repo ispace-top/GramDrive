@@ -18,6 +18,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 
+logger = logging.getLogger(__name__)
+
 # 使用集成的 lifespan 管理器创建 FastAPI 应用
 app = FastAPI(
     lifespan=lifespan,
@@ -49,47 +51,46 @@ async def security_headers_middleware(request: Request, call_next):
     return response
 
 @app.middleware("http")
-async def auth_middleware(request: Request, call_next):
+async def check_configured_middleware(request: Request, call_next):
     """
-    一个全局中间件，用于处理所有页面的访问权限。
+    中间件 1: 检查应用是否已配置
+    如果未配置（即未设置密码），则强制所有流量到引导页面。
     """
-    # 检查是否设置了密码（Hash 或 Plain）
     settings = get_app_settings()
     has_password = bool((settings.get("PASS_HASH") or settings.get("PASS_WORD") or "").strip())
     
     request_path = request.url.path
 
-    # 定义公共路径，这些路径永远不拦截
-    # /api/auth/login 用于登录，/api/auth/logout 用于登出，都应该放行
-    public_paths = ["/static", "/api", "/d", "/favicon.ico"]
-    is_public = any(request_path.startswith(p) for p in public_paths)
-
-    # 情况 1：未设置密码
+    # 如果没有设置密码，说明是首次运行或重置了
     if not has_password:
-        # 如果是引导页或 API/静态资源，放行
-        if request_path == "/welcome" or request_path == "/settings" or is_public:
-            return await call_next(request)
-        # 否则强制重定向到引导页
-        return RedirectResponse(url="/welcome", status_code=307)
-
-    # 情况 2：已设置密码
-    # 如果访问引导页，强制跳转到主页
-    if request_path == "/welcome":
-        return RedirectResponse(url="/", status_code=307)
-
-    # --- 鉴权逻辑 ---
+        # 允许访问引导页、设置页以及其所需的 API 和静态资源
+        logging.info(f"【配置检查】没有设置密码，说明是首次运行或重置了.请求Path: {request.url.path}")
+        allowed_paths = ["/welcome", "/settings", "/static", "/api/auth/login", "/api/app-config/apply", "/api/set-password", "/favicon.ico"]
+        if not any(request_path.startswith(p) for p in allowed_paths):
+            logging.info(f"【重定向】未配置的请求 {request_path} -> /welcome")
+            return RedirectResponse(url="/welcome", status_code=307)
     
-    # 检查 Session
-    session_id = request.cookies.get(COOKIE_NAME)
-    is_authenticated = False
-    
-    if session_id:
-        session = database.get_session(session_id)
-        if session:
-            is_authenticated = True
+    # 如果已经设置了密码，此中间件不做任何事情，直接传递给下一个中间件处理会话认证
+    return await call_next(request)
 
-    # 保护 API
-    # 包含了上传、删除、文件列表、配置管理等敏感接口
+
+@app.middleware("http")
+async def session_auth_middleware(request: Request, call_next):
+    """
+    中间件 2: 处理用户会话认证
+    这个中间件只在应用已经配置好密码后才起作用。
+    """
+    settings = get_app_settings()
+    has_password = bool((settings.get("PASS_HASH") or settings.get("PASS_WORD") or "").strip())
+
+    # 如果没设置密码，则这个中间件不做任何事
+    if not has_password:
+        logging.info(f"【用户会话认证】没有设置密码，这个中间件不做任何事.请求Path: {request.url.path}")
+        return await call_next(request)
+
+    request_path = request.url.path
+    
+    # 定义需要认证才能访问的 API 路由
     protected_api_prefixes = (
         "/api/upload", 
         "/api/delete", 
@@ -98,33 +99,40 @@ async def auth_middleware(request: Request, call_next):
         "/api/app-config", 
         "/api/reset-config",
         "/api/set-password",
-        "/api/stats", # Protect stats API
-        "/api/downloads" # Protect downloads API (related to new features)
+        "/api/stats",
+        "/api/downloads"
     )
+
+    # 定义需要认证才能访问的页面
+    protected_pages = ["/", "/image_hosting", "/settings", "/stats", "/downloads"]
     
-    if any(request_path.startswith(prefix) for prefix in protected_api_prefixes):
-        if not is_authenticated:
+    # 检查会话 cookie
+    session_id = request.cookies.get(COOKIE_NAME)
+    is_authenticated = False
+    if session_id and database.get_session(session_id):
+        is_authenticated = True
+
+    # 如果已登录用户访问登录页，重定向到主页
+    if is_authenticated and (request_path == "/login" or request_path == "/pwd"):
+        logging.info(f"【重定向】已登录用户访问登录页 {request_path} -> /")
+        return RedirectResponse(url="/", status_code=307)
+
+    # 如果未登录用户访问受保护的 API
+    if not is_authenticated and any(request_path.startswith(prefix) for prefix in protected_api_prefixes):
+        # PicGo API key 是个例外，允许通过 key 进行认证
+        if request_path.startswith('/api/upload') and request.headers.get('x-api-key'):
+             pass # 让后续的依赖注入去处理 key 的验证
+        else:
             return JSONResponse(
                 status_code=401,
                 content={"detail": error_payload("需要网页登录", code="login_required")},
             )
 
-    # 保护页面
-    # 明确列出需要登录才能访问的页面
-    protected_pages = ["/", "/image_hosting", "/files", "/settings"]
-    
-    # 登录页特殊处理：如果已登录，跳转到主页
-    if request_path == "/login" or request_path == "/pwd":
-        if is_authenticated:
-            return RedirectResponse(url="/", status_code=307)
-        # 未登录则允许访问登录页
-        return await call_next(request)
-
-    # 核心页面鉴权
-    if request_path in protected_pages:
-        if not is_authenticated:
-            return RedirectResponse(url="/login", status_code=307)
-
+    # 如果未登录用户访问受保护的页面
+    if not is_authenticated and request_path in protected_pages:
+        logging.info(f"【重定向】未登录用户访问受保护页面 {request_path} -> /login")
+        return RedirectResponse(url="/login", status_code=307)
+        
     return await call_next(request)
 
 # 挂载静态文件目录

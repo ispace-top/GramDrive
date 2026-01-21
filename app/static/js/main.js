@@ -259,6 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         fileInput.addEventListener('change', ({ target }) => {
+            console.log('DEBUG: fileInput change event triggered. Files:', target.files);
             if (target.files.length > 0) {
                 handleFiles(target.files);
             }
@@ -270,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isUploading = false;
 
     function handleFiles(files) {
+        console.log('DEBUG: handleFiles called with files:', files);
         if (progressArea) progressArea.innerHTML = ''; 
         
         for (const file of files) {

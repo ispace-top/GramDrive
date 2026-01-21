@@ -21,20 +21,17 @@ def _is_bot_ready(app_settings: dict) -> bool:
 
 async def _stop_bot(app: FastAPI) -> None:
     if hasattr(app.state, "bot_app") and app.state.bot_app:
+        logger.info("正在停止机器人...")
         try:
-            await app.state.bot_app.updater.stop()
-        except Exception:
-            pass
-        try:
-            await app.state.bot_app.stop()
-        except Exception:
-            pass
-        try:
+            # shutdown() 是一个全面的清理方法，它应该会处理好 updater 和其他组件
             await app.state.bot_app.shutdown()
-        except Exception:
-            pass
-        app.state.bot_app = None
-        logger.info("机器人已停止")
+            logger.info("机器人已成功关闭")
+        except Exception as e:
+            # 如果关闭失败，记录详细错误，这对于调试至关重要
+            logger.error("停止机器人时发生错误: %s", e, exc_info=True)
+        finally:
+            # 无论成功与否，都清理掉状态
+            app.state.bot_app = None
 
 async def _start_bot(app: FastAPI, app_settings: dict) -> None:
     await _stop_bot(app)

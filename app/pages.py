@@ -27,9 +27,7 @@ def _page_cfg(request: Request) -> dict:
 
 @router.get("/welcome", response_class=HTMLResponse)
 async def welcome_page(request: Request):
-    # 如果已设置密码，禁止访问欢迎页，跳转到主页
-    if get_active_password():
-        return RedirectResponse(url="/", status_code=307)
+    # 诊断：暂时移除所有逻辑，无条件返回 welcome 模板
     return templates.TemplateResponse("welcome.html", {"request": request})
 
 
