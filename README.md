@@ -2,494 +2,81 @@
   <img src="app/static/images/logo_word.png" alt="Gram Drive Logo" width="400"/>
 
   <p>
-    <strong>Turn Telegram into Your Personal Cloud Storage</strong><br>
-    <em>将 Telegram 变成你的私人云存储</em>
+    <strong>将 Telegram 变成你的私人云存储</strong>
   </p>
 
   <p>
-    <a href="#"><img src="https://img.shields.io/badge/version-2.0.0-blue.svg" alt="Version"></a>
+    <a href="https://github.com/ispace-top/GramDrive/releases"><img src="https://img.shields.io/github/v/release/ispace-top/GramDrive?color=blue" alt="Version"></a>
     <a href="#"><img src="https://img.shields.io/badge/python-3.11+-green.svg" alt="Python"></a>
-    <a href="#"><img src="https://img.shields.io/badge/docker-ready-brightgreen.svg" alt="Docker"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-orange.svg" alt="License"></a>
+    <a href="https://hub.docker.com/r/ispace/gramdrive"><img src="https://img.shields.io/docker/pulls/ispace/gramdrive" alt="Docker Pulls"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/ispace-top/GramDrive" alt="License"></a>
     <a href="#"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg" alt="Platform"></a>
   </p>
 
   <p>
-    <a href="#english">English</a> •
-    <a href="#中文">中文</a>
+    中文 • <a href="README_EN.md">English</a>
   </p>
 </div>
 
 ---
 
-<h2 id="english">🇬🇧 English</h2>
-
-### 📖 Overview
-
-**Gram Drive** is a modern web-based file management system that leverages Telegram as unlimited cloud storage. Built with FastAPI and optimized for performance, it provides an intuitive interface to manage, preview, and share your files stored in Telegram channels.
-
-### ✨ Key Features
-
-#### 🗂️ **File Management**
-- **Multi-format Support**: Images, videos, audio, documents, and more
-- **Smart Categories**: Auto-categorization by file type (image/video/audio/document/other)
-- **Advanced Search**: Quick file search and filtering
-- **Batch Operations**: Multi-select, batch delete, bulk link copying
-- **File Preview**: Built-in preview for images, videos, PDFs, and text files with loading states
-
-#### 🖼️ **Image Hosting Mode**
-- **Thumbnail Generation**: Automatic thumbnail creation with 3 size options (150x150, 300x300, 600x600)
-- **Smart Caching**: Server-side caching for blazing-fast loading (~80% faster)
-- **Link Formats**: Copy as URL, Markdown, or HTML
-- **Grid View**: Beautiful responsive grid layout with hover effects
-
-#### ⬇️ **Intelligent Download Management**
-- **Auto-Download**: Automatic file synchronization from Telegram
-- **Organized Storage**: Files saved by type and date (\`/downloads/image/2026-01-22/photo.jpg\`)
-- **Configurable Filters**: File type, size range, download location
-- **Real-time Progress**: Live download status with progress tracking
-- **Queue Management**: Concurrent downloads with configurable threads
-
-#### 🎨 **Modern UI/UX**
-- **Dark Mode**: Auto-detection with manual toggle
-- **Responsive Design**: Optimized for desktop, tablet, and mobile
-- **Compact Upload**: Space-efficient upload button design
-- **Loading States**: Smooth loading animations and visual feedback
-
-#### 🔒 **Security & Performance**
-- **Password Protection**: Secure login system
-- **Session Management**: Auto-logout after inactivity
-- **Connection Pooling**: High-performance HTTP client (500 concurrent connections)
-- **Conflict Resolution**: Smart Telegram Bot conflict handling
-
-#### 📊 **Statistics Dashboard**
-- **Storage Analytics**: Total files, storage usage, file type distribution
-- **Upload Trends**: Daily/weekly upload charts
-- **Category Breakdown**: Visual file category statistics
-
-### 🚀 Quick Start
-
-#### Prerequisites
-
-- **Docker & Docker Compose** (recommended) or **Python 3.11+**
-- **Telegram Bot Token** ([Create one via @BotFather](https://t.me/BotFather))
-- **Telegram Channel** (create a private channel for file storage)
-
-#### 🐳 Docker Deployment (Recommended)
-
-1. **Clone the repository**
-   \`\`\`bash
-   git clone https://github.com/yourusername/tgstate-python.git
-   cd tgstate-python
-   \`\`\`
-
-2. **Create directory structure**
-   \`\`\`bash
-   mkdir -p ../GramDrive/data ../GramDrive/downloads
-   \`\`\`
-
-3. **Create \`.env\` file** (optional)
-   \`\`\`bash
-   cat > .env << EOF
-   BOT_TOKEN=your_bot_token_here
-   CHANNEL_NAME=@your_channel_name
-   PASS_WORD=your_admin_password
-   PICGO_API_KEY=optional_api_key
-   BASE_URL=localhost
-   EOF
-   \`\`\`
-
-4. **Start the application**
-   \`\`\`bash
-   docker-compose up -d
-   \`\`\`
-
-5. **Access the web interface**
-   \`\`\`
-   http://localhost:8000
-   \`\`\`
-
-6. **Initial Setup**
-   - Open the web interface
-   - Set your admin password
-   - Configure Bot Token and Channel Name in Settings
-   - Click "Apply" to start the bot
-
-#### 🔧 Manual Installation
-
-**Prerequisites:**
-```bash
-python --version  # Should be 3.11+
-pip --version
-```
-
-**Installation Steps:**
-
-1. **Clone and setup**
-   ```bash
-   git clone https://github.com/yourusername/tgstate-python.git
-   cd tgstate-python
-   python -m venv venv
-   source venv/bin/activate  # Linux/macOS
-   # venv\Scripts\activate   # Windows
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Bot Token and Channel Name
-   ```
-
-4. **Create data directories**
-   ```bash
-   mkdir -p data downloads
-   ```
-
-5. **Run the application**
-   ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-6. **Access the application**
-   ```
-   http://localhost:8000
-   ```
-
-### ⚙️ Configuration Guide
-
-#### Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `BOT_TOKEN` | ✅ Yes | - | Telegram bot token from @BotFather |
-| `CHANNEL_NAME` | ✅ Yes | - | Target Telegram channel (@name or -1001234567890) |
-| `PASS_WORD` | ❌ No | - | Admin password (leave empty for no auth) |
-| `PICGO_API_KEY` | ❌ No | - | API key for PicGo/image hosting integration |
-| `BASE_URL` | ❌ No | `localhost` | Base URL for generated share links |
-
-#### Auto-Download Configuration
-
-**In Web Settings:**
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `AUTO_DOWNLOAD_ENABLED` | `True` | Enable automatic file downloads |
-| `DOWNLOAD_DIR` | `/app/downloads` | Directory to save downloads |
-| `DOWNLOAD_FILE_TYPES` | `image,video` | Comma-separated file types to download |
-| `DOWNLOAD_MAX_SIZE` | `52428800` (50MB) | Maximum file size to download (bytes) |
-| `DOWNLOAD_MIN_SIZE` | `0` | Minimum file size to download (bytes) |
-| `DOWNLOAD_THREADS` | `3` | Number of concurrent downloads |
-| `DOWNLOAD_POLLING_INTERVAL` | `60` | Check interval in seconds |
-
-**Directory Structure:**
-
-Auto-downloaded files are organized by type and date:
-```
-downloads/
-├── image/
-│   ├── 2026-01-22/
-│   │   ├── photo_001.jpg
-│   │   ├── photo_002.png
-│   │   └── screenshot.png
-│   └── 2026-01-21/
-│       └── vacation.jpg
-├── video/
-│   ├── 2026-01-22/
-│   │   └── meeting_recording.mp4
-│   └── 2026-01-20/
-│       └── tutorial.mkv
-└── document/
-    ├── 2026-01-22/
-    │   └── contract.pdf
-    └── 2026-01-15/
-        └── presentation.pptx
-```
-
-### 📚 Usage Examples
-
-#### 🌐 Web Interface
-
-1. **File Management**
-   - Click on files to preview (images, videos, PDFs supported)
-   - Multi-select for batch operations
-   - Copy file links in multiple formats (URL, Markdown, HTML)
-   - Auto-categorization by file type
-
-2. **Image Hosting Mode**
-   - Dedicated interface for image sharing
-   - 3-size thumbnails (small/medium/large) with server-side caching
-   - One-click copy to clipboard
-   - Share with friends using short URLs
-
-3. **Download Management**
-   - Configure auto-download filters (file types, sizes)
-   - Monitor download progress in real-time
-   - View organized downloads by type and date
-
-#### 🔌 API Usage
-
-**Get File List**
-```bash
-curl -X GET "http://localhost:8000/api/files" \
-  -H "Cookie: tgstate_session=your_session_id"
-```
-
-**Upload File**
-```bash
-curl -X POST "http://localhost:8000/api/upload" \
-  -F "file=@/path/to/file.jpg" \
-  -H "Cookie: tgstate_session=your_session_id"
-```
-
-**Upload with PicGo**
-```bash
-curl -X POST "http://localhost:8000/api/upload" \
-  -F "file=@photo.jpg" \
-  -H "x-api-key: your_api_key"
-```
-
-**Download File**
-```bash
-curl "http://localhost:8000/d/AbC123" -o downloaded_file.jpg
-```
-
-**Get Thumbnail**
-```bash
-# Available sizes: small (150x150), medium (300x300), large (600x600)
-curl "http://localhost:8000/api/thumbnail/file_id?size=medium" -o thumb.jpg
-```
-
-**Delete File**
-```bash
-curl -X DELETE "http://localhost:8000/api/files/file_id" \
-  -H "Cookie: tgstate_session=your_session_id"
-```
-
-#### 🖼️ PicGo Configuration
-
-Add to PicGo with custom uploader:
-
-**Picgo Config (PicGo > Plugin > Piclist > Config):**
-```json
-{
-  "picBed": {
-    "custom": {
-      "show": true,
-      "name": "Gram Drive",
-      "url": "http://your-server:8000/d/$filename",
-      "body": [
-        {
-          "key": "file",
-          "type": "file",
-          "required": true
-        }
-      ],
-      "headers": [
-        {
-          "key": "x-api-key",
-          "value": "your_api_key"
-        }
-      ],
-      "customBody": "multipart/form-data",
-      "httpPlugin": "request"
-    }
-  }
-}
-```
-
-### 🐛 Troubleshooting
-
-#### Bot Conflict Error
-**Error:** `Conflict: terminated by other getUpdates request`
-
-**Causes:**
-- Multiple app instances running simultaneously
-- Old bot instance not fully shut down
-- Running in both dev and production environments
-
-**Solutions:**
-```bash
-# Complete restart
-docker-compose down
-sleep 10
-docker-compose up -d --build
-
-# Or manually
-pkill -f "uvicorn app"
-sleep 5
-uvicorn app.main:app --reload
-```
-
-#### Download Service Not Working
-**Problem:** Auto-download is not starting files
-
-**Checklist:**
-- ✅ `AUTO_DOWNLOAD_ENABLED` is set to `True` in Settings
-- ✅ `BOT_TOKEN` and `CHANNEL_NAME` are configured and applied
-- ✅ Bot shows as "Ready" (green dot) in Settings
-- ✅ Check logs: `docker logs gramdrive` for errors
-- ✅ Directory exists: `/app/downloads` (or configured `DOWNLOAD_DIR`)
-
-**Fix:**
-```bash
-# Check bot status in logs
-docker logs gramdrive | grep -i "bot\|download"
-
-# If bot failed, restart with fresh configuration
-docker-compose restart gramdrive
-```
-
-#### Thumbnail API Returning 400
-**Problem:** Image preview/thumbnails not loading
-
-**Solution:**
-- Thumbnail service auto-detects missing `mime_type` and assumes images
-- Check logs for warnings: `docker logs gramdrive | grep -i thumbnail`
-- Clear thumbnail cache: `curl -X POST http://localhost:8000/api/thumbnail/clear-all`
-
-#### Connection Pool Timeout
-**Error:** `All connections in the connection pool are occupied`
-
-**Cause:** Too many concurrent image loads exhausting connection pool
-
-**Solution (already optimized):**
-- Connection pool increased to 500 max connections
-- Thumbnails cached server-side (no repeated downloads)
-- Update to latest version: `docker-compose up -d --build`
-
-### 📋 System Requirements
-
-| Component | Requirement | Notes |
-|-----------|------------|-------|
-| Python | 3.11+ | For manual installation |
-| Docker | Latest | Recommended for deployment |
-| Memory | 512MB | Minimum for light usage |
-| Disk | Variable | Depends on stored files |
-| Network | Stable internet | For Telegram connectivity |
-
-### 🗺️ Roadmap
-
-**v2.0.0** (Current)
-- ✅ File management with preview
-- ✅ Image hosting mode
-- ✅ Auto-download with organization
-- ✅ Thumbnail caching
-- ✅ Connection pooling optimization
-- ✅ Bot conflict resolution
-
-**v2.1.0** (Planned)
-- 📌 WebDAV protocol support
-- 📌 Direct Telegram channel integration
-- 📌 Advanced search with filters
-- 📌 File sharing with expiration
-- 📌 Multi-channel support
-
-**v2.2.0** (Future)
-- 📌 S3-compatible API
-- 📌 FTP server interface
-- 📌 Mobile app (PWA)
-- 📌 Video transcoding on upload
-- 📌 Comments and annotations
-
-### 🎉 Acknowledgments
-
-This project stands on the shoulders of giants. Special thanks to:
-
-- **[FastAPI](https://fastapi.tiangolo.com/)** - Modern, fast web framework
-- **[python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)** - Telegram Bot API wrapper
-- **[Pillow](https://python-pillow.org/)** - Image processing excellence
-- **[httpx](https://www.python-httpx.org/)** - Elegant async HTTP client
-- **[SQLite](https://www.sqlite.org/)** - Reliable embedded database
-- **[Uvicorn](https://www.uvicorn.org/)** - Lightning-fast ASGI server
-- **[Docker](https://www.docker.com/)** - Containerization made simple
-- **[Telegram](https://telegram.org/)** - Building on a secure platform
-
-### 📄 License
-
-This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
-
-### 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### 💬 Contact & Support
-
-- **Issues:** [GitHub Issues](https://github.com/yourusername/tgstate-python/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/tgstate-python/discussions)
-- **Email:** your-email@example.com
-
----
-
-<h2 id="中文">🇨🇳 中文</h2>
-
-### 📖 项目简介
+## 📖 项目简介
 
 **Gram Drive** 是一个现代化的网页文件管理系统，利用 Telegram 作为无限云存储。基于 FastAPI 构建并优化了性能，它提供了直观的界面来管理、预览和分享存储在 Telegram 频道中的文件。
 
-### ✨ 主要功能
+## ✨ 主要功能
 
-#### 🗂️ **文件管理**
+### 🗂️ **文件管理**
 - **多格式支持**：图片、视频、音频、文档等
 - **智能分类**：按文件类型自动分类（图片/视频/音频/文档/其他）
 - **高级搜索**：快速查找和过滤文件
 - **批量操作**：多选、批量删除、批量复制链接
 - **文件预览**：支持图片、视频、PDF 和文本文件预览，带加载状态
 
-#### 🖼️ **图床模式**
+### 🖼️ **图床模式**
 - **缩略图生成**：自动生成 3 种尺寸缩略图（150x150、300x300、600x600）
 - **智能缓存**：服务端缓存，加载快 80%
 - **多种格式**：支持复制 URL、Markdown 或 HTML 链接
 - **网格视图**：美观的响应式网格布局，悬停效果
 
-#### ⬇️ **智能下载管理**
+### ⬇️ **智能下载管理**
 - **自动下载**：自动同步 Telegram 中的文件
 - **有序存储**：按类型和日期保存文件（`/downloads/image/2026-01-22/photo.jpg`）
 - **可配置过滤器**：文件类型、文件大小、下载位置
 - **实时进度**：在线下载状态和进度跟踪
 - **队列管理**：支持并发下载，可配置线程数
 
-#### 🎨 **现代化 UI/UX**
+### 🎨 **现代化 UI/UX**
 - **深色模式**：自动检测和手动切换
 - **响应式设计**：适配桌面、平板和移动设备
 - **紧凑上传**：节省空间的上传按钮设计
 - **加载状态**：平滑的加载动画和视觉反馈
 
-#### 🔒 **安全与性能**
+### 🔒 **安全与性能**
 - **密码保护**：安全的登录系统
 - **会话管理**：长时间不操作自动退出
 - **连接池**：高性能 HTTP 客户端（500 并发连接）
 - **冲突处理**：智能 Telegram Bot 冲突处理
 
-#### 📊 **统计仪表板**
+### 📊 **统计仪表板**
 - **存储分析**：总文件数、存储使用量、文件类型分布
 - **上传趋势**：每日/每周上传图表
 - **分类统计**：可视化文件分类统计
 
-### 🚀 快速开始
+## 🚀 快速开始
 
-#### 前置条件
+### 前置条件
 
 - **Docker & Docker Compose**（推荐）或 **Python 3.11+**
 - **Telegram Bot Token**（[通过 @BotFather 创建](https://t.me/BotFather)）
 - **Telegram 频道**（创建私人频道用于文件存储）
 
-#### 🐳 Docker 部署（推荐）
+### 🐳 Docker 部署（推荐）
 
 1. **克隆仓库**
    ```bash
-   git clone https://github.com/yourusername/tgstate-python.git
-   cd tgstate-python
+   git clone https://github.com/ispace-top/GramDrive.git
+   cd GramDrive
    ```
 
 2. **创建目录结构**
@@ -524,7 +111,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
    - 在设置中配置 Bot Token 和频道名称
    - 点击"应用"启动机器人
 
-#### 🔧 手动安装
+### 🔧 手动安装
 
 **前置条件：**
 ```bash
@@ -536,8 +123,8 @@ pip --version
 
 1. **克隆并设置**
    ```bash
-   git clone https://github.com/yourusername/tgstate-python.git
-   cd tgstate-python
+   git clone https://github.com/ispace-top/GramDrive.git
+   cd GramDrive
    python -m venv venv
    source venv/bin/activate  # Linux/macOS
    # venv\Scripts\activate   # Windows
@@ -569,9 +156,9 @@ pip --version
    http://localhost:8000
    ```
 
-### ⚙️ 配置指南
+## ⚙️ 配置指南
 
-#### 环境变量
+### 环境变量
 
 | 变量名 | 必需 | 默认值 | 说明 |
 |--------|------|--------|------|
@@ -581,7 +168,7 @@ pip --version
 | `PICGO_API_KEY` | ❌ 否 | - | PicGo/图床集成的 API 密钥 |
 | `BASE_URL` | ❌ 否 | `localhost` | 生成分享链接的基础 URL |
 
-#### 自动下载配置
+### 自动下载配置
 
 **在 Web 设置中：**
 
@@ -619,9 +206,9 @@ downloads/
         └── presentation.pptx
 ```
 
-### 📚 使用示例
+## 📚 使用示例
 
-#### 🌐 Web 界面
+### 🌐 Web 界面
 
 1. **文件管理**
    - 点击文件预览（支持图片、视频、PDF）
@@ -640,7 +227,7 @@ downloads/
    - 实时监测下载进度
    - 查看按类型和日期组织的下载文件
 
-#### 🔌 API 使用
+### 🔌 API 使用
 
 **获取文件列表**
 ```bash
@@ -679,7 +266,7 @@ curl -X DELETE "http://localhost:8000/api/files/file_id" \
   -H "Cookie: tgstate_session=your_session_id"
 ```
 
-#### 🖼️ PicGo 配置
+### 🖼️ PicGo 配置
 
 添加到 PicGo 自定义上传器：
 
@@ -711,9 +298,9 @@ curl -X DELETE "http://localhost:8000/api/files/file_id" \
 }
 ```
 
-### 🐛 故障排除
+## 🐛 故障排除
 
-#### Bot 冲突错误
+### Bot 冲突错误
 **错误：** `Conflict: terminated by other getUpdates request`
 
 **原因：**
@@ -734,7 +321,7 @@ sleep 5
 uvicorn app.main:app --reload
 ```
 
-#### 下载服务不工作
+### 下载服务不工作
 **问题：** 自动下载无法启动文件
 
 **检查清单：**
@@ -753,7 +340,7 @@ docker logs gramdrive | grep -i "bot\|download"
 docker-compose restart gramdrive
 ```
 
-#### 缩略图 API 返回 400
+### 缩略图 API 返回 400
 **问题：** 图片预览/缩略图无法加载
 
 **解决方案：**
@@ -761,7 +348,7 @@ docker-compose restart gramdrive
 - 检查日志中的警告：`docker logs gramdrive | grep -i thumbnail`
 - 清除缩略图缓存：`curl -X POST http://localhost:8000/api/thumbnail/clear-all`
 
-#### 连接池超时
+### 连接池超时
 **错误：** `All connections in the connection pool are occupied`
 
 **原因：** 过多并发图片加载导致连接池耗尽
@@ -771,7 +358,7 @@ docker-compose restart gramdrive
 - 缩略图在服务端缓存（无重复下载）
 - 更新到最新版本：`docker-compose up -d --build`
 
-### 📋 系统要求
+## 📋 系统要求
 
 | 组件 | 要求 | 备注 |
 |------|------|------|
@@ -781,7 +368,7 @@ docker-compose restart gramdrive
 | 磁盘 | 可变 | 取决于存储文件数量 |
 | 网络 | 稳定网络 | 用于 Telegram 连接 |
 
-### 🗺️ 开发路线图
+## 🗺️ 开发路线图
 
 **v2.0.0**（当前版本）
 - ✅ 文件管理和预览
@@ -805,7 +392,7 @@ docker-compose restart gramdrive
 - 📌 上传时视频转码
 - 📌 评论和注释功能
 
-### 🎉 致谢
+## 🎉 致谢
 
 本项目站在巨人的肩膀上。特别感谢：
 
@@ -818,11 +405,11 @@ docker-compose restart gramdrive
 - **[Docker](https://www.docker.com/)** - 简化容器化
 - **[Telegram](https://telegram.org/)** - 在安全平台上构建
 
-### 📄 许可证
+## 📄 许可证
 
 本项目采用 [MIT 许可证](LICENSE) - 详见 LICENSE 文件。
 
-### 🤝 贡献指南
+## 🤝 贡献指南
 
 欢迎贡献！请随时提交 Pull Request。
 
@@ -832,10 +419,10 @@ docker-compose restart gramdrive
 4. 推送到分支（`git push origin feature/amazing-feature`）
 5. 打开 Pull Request
 
-### 💬 联系与支持
+## 💬 联系与支持
 
-- **问题反馈：** [GitHub Issues](https://github.com/yourusername/tgstate-python/issues)
-- **讨论区：** [GitHub Discussions](https://github.com/yourusername/tgstate-python/discussions)
+- **问题反馈：** [GitHub Issues](https://github.com/ispace-top/GramDrive/issues)
+- **讨论区：** [GitHub Discussions](https://github.com/ispace-top/GramDrive/discussions)
 - **邮件：** your-email@example.com
 
 ---
@@ -843,8 +430,8 @@ docker-compose restart gramdrive
 <div align="center">
   <p>
     <strong>Made with ❤️ for Telegram enthusiasts</strong><br>
-    <a href="https://github.com/yourusername/tgstate-python">GitHub</a> •
-    <a href="https://github.com/yourusername/tgstate-python/issues">Issues</a> •
-    <a href="https://github.com/yourusername/tgstate-python/discussions">Discussions</a>
+    <a href="https://github.com/ispace-top/GramDrive">GitHub</a> •
+    <a href="https://github.com/ispace-top/GramDrive/issues">Issues</a> •
+    <a href="https://github.com/ispace-top/GramDrive/discussions">Discussions</a>
   </p>
 </div>
