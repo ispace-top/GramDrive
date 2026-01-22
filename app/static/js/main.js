@@ -211,28 +211,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Upload Logic ---
-    if (uploadArea && fileInput) {
-        uploadArea.addEventListener('dragover', (event) => {
-            event.preventDefault();
-            uploadArea.style.borderColor = 'var(--primary-color)';
-            uploadArea.style.backgroundColor = 'var(--bg-surface-hover)';
+    const uploadButton = document.getElementById('upload-button');
+    if (uploadButton && fileInput) {
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
         });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.borderColor = '';
-            uploadArea.style.backgroundColor = '';
-        });
-
-        uploadArea.addEventListener('drop', (event) => {
-            event.preventDefault();
-            uploadArea.style.borderColor = '';
-            uploadArea.style.backgroundColor = '';
-            const files = event.dataTransfer.files;
-            if (files.length > 0) {
-                handleFiles(files);
-            }
-        });
-
+        
         fileInput.addEventListener('change', ({ target }) => {
             console.log('DEBUG: fileInput change event triggered. Files:', target.files);
             if (target.files.length > 0) {
@@ -241,13 +225,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Drag and drop logic - this should still apply to the document or a specific drop zone if desired,
+    // but the original 'uploadArea' card is now gone.
+    // If drag and drop is still desired for the new compact design, a new drop zone needs to be defined.
+    // For now, let's remove the drag and drop listeners that were tied to the old uploadArea.
+
+    // Queue system for uploads
+
     // Queue system for uploads
     const uploadQueue = [];
     let isUploading = false;
 
     function handleFiles(files) {
         console.log('DEBUG: handleFiles called with files:', files);
-        if (progressArea) progressArea.innerHTML = ''; 
+        if (progressArea) {
+            progressArea.innerHTML = ''; 
+            progressArea.classList.remove('hidden'); // Show prog-zone when uploads start
+        }
         
         for (const file of files) {
             uploadQueue.push(file);
@@ -256,7 +250,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function processQueue() {
-        if (isUploading || uploadQueue.length === 0) return;
+        if (isUploading || uploadQueue.length === 0) {
+            if (uploadQueue.length === 0 && !isUploading && progressArea) {
+                progressArea.classList.add('hidden'); // Hide prog-zone if queue is empty and no upload is in progress
+            }
+            return;
+        }
         
         isUploading = true;
         const file = uploadQueue.shift();
@@ -555,7 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = '';
         if (isGridView) {
              html = `
-                <div class="file-item" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-body);" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}">
+                <div class="file-item image-card clickable-file-row" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-body);" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}" data-file-type="${file.mime_type || 'application/octet-stream'}">
                     <div style="position: relative; aspect-ratio: 16/9; background: #000;">
                         <img src="${fileUrl}" loading="lazy" style="width: 100%; height: 100%; object-fit: contain;" alt="${file.filename}">
                         <div style="position: absolute; top: 8px; left: 8px;">
@@ -611,6 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewIframe = document.getElementById('preview-iframe');
     const previewUnsupported = document.getElementById('preview-unsupported');
     const previewDownloadLink = document.getElementById('preview-download-link');
+    const previewLoading = document.getElementById('preview-loading'); // New variable
     const previewCloseButton = filePreviewModal ? filePreviewModal.querySelector('.close-button') : null;
 
     function resetPreviewModal() {
@@ -618,6 +618,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (previewVideo) previewVideo.style.display = 'none';
         if (previewIframe) previewIframe.style.display = 'none';
         if (previewUnsupported) previewUnsupported.style.display = 'none';
+        if (previewLoading) previewLoading.style.display = 'none'; // Hide loading on reset
+
         if (previewImage) previewImage.src = '';
         if (previewVideo) previewVideo.src = '';
         if (previewIframe) previewIframe.src = '';
@@ -629,6 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resetPreviewModal();
         filePreviewModal.style.display = 'flex'; // Use flex to center modal-content
+        if (previewLoading) previewLoading.style.display = 'flex'; // Show loading
 
         let supported = false;
 
@@ -636,6 +639,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (previewImage) {
                 previewImage.src = fileUrl;
                 previewImage.style.display = 'block';
+                previewImage.onload = () => { if (previewLoading) previewLoading.style.display = 'none'; };
+                previewImage.onerror = () => { if (previewLoading) previewLoading.style.display = 'none'; };
             }
             supported = true;
         } else if (fileType.startsWith('video/') || fileType.startsWith('audio/')) {
@@ -644,22 +649,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewVideo.style.display = 'block';
                 previewVideo.load(); // Load video to show poster/metadata
                 previewVideo.play();
+                previewVideo.onloadeddata = () => { if (previewLoading) previewLoading.style.display = 'none'; };
+                previewVideo.onerror = () => { if (previewLoading) previewLoading.style.display = 'none'; };
             }
             supported = true;
         } else if (fileType === 'application/pdf' || fileType.startsWith('text/')) {
             if (previewIframe) {
                 previewIframe.src = fileUrl;
                 previewIframe.style.display = 'block';
+                previewIframe.onload = () => { if (previewLoading) previewLoading.style.display = 'none'; };
+                previewIframe.onerror = () => { if (previewLoading) previewLoading.style.display = 'none'; }; // Also hide on error for iframe
             }
             supported = true;
         }
 
         if (!supported) {
             if (previewUnsupported) previewUnsupported.style.display = 'block';
-            if (previewDownloadLink) {
-                previewDownloadLink.href = `${fileUrl}?download=1`;
-                previewDownloadLink.textContent = `下载 ${fileName}`;
-            }
+            if (previewLoading) previewLoading.style.display = 'none'; // Hide loading if unsupported
         }
     }
 

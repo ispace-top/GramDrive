@@ -146,7 +146,7 @@ class DownloadService:
                     # Generate new filename with timestamp
                     import datetime
                     current_time = datetime.datetime.now()
-                    timestamp_str = current_time.strftime("%Y-%m-%d_%H-%M-%S-%f")[:-3] # YYYY-MM-DD_HH-MM-SS-ms
+                    timestamp_str = current_time.strftime("%Y%m%d_%f")[:-3] # YYYYMMDD_ms
 
                     base_name, ext = os.path.splitext(filename)
                     new_filename = f"{timestamp_str}_{base_name}{ext}"

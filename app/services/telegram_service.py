@@ -3,6 +3,7 @@ import io
 import logging
 import os
 import mimetypes
+import time
 from functools import lru_cache
 
 import telegram
@@ -16,6 +17,10 @@ from .. import database
 CHUNK_SIZE_BYTES = int(19.5 * 1024 * 1024)
 
 logger = logging.getLogger(__name__)
+
+# Add a simple in-memory cache for download URLs
+_download_url_cache = {}
+_download_url_cache_ttl = 300 # 5 minutes TTL
 
 class TelegramService:
     """
@@ -182,6 +187,7 @@ class TelegramService:
     async def get_download_url(self, file_id: str) -> str | None:
         """
         为给定的 file_id 获取临时下载链接。
+        使用内存缓存，减少对 Telegram API 的频繁请求。
 
         参数:
             file_id: 来自 Telegram 的文件 ID。
@@ -189,11 +195,25 @@ class TelegramService:
         返回:
             如果成功，则返回临时下载链接，否则返回 None。
         """
+        # Check cache first
+        cached_entry = _download_url_cache.get(file_id)
+        if cached_entry:
+            url, timestamp = cached_entry
+            if (time.time() - timestamp) < _download_url_cache_ttl:
+                logger.debug(f"Cache hit for download URL: {file_id}")
+                return url
+            else:
+                logger.debug(f"Cache expired for download URL: {file_id}")
+
         try:
             file = await self.bot.get_file(file_id)
-            return file.file_path
+            url = file.file_path
+            if url:
+                _download_url_cache[file_id] = (url, time.time())
+                logger.debug(f"Cache miss, fetched and cached download URL for: {file_id}")
+            return url
         except Exception as e:
-            logger.error("从 Telegram 获取下载链接时出错: %s", e)
+            logger.error(f"从 Telegram 获取下载链接时出错: {e}", exc_info=True)
             return None
 
     async def try_get_manifest_original_filename(self, manifest_file_id: str) -> tuple[bool, str | None, str | None]:

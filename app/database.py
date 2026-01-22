@@ -322,10 +322,11 @@ def get_file_by_id(identifier: str) -> dict | None:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
-            # 优先匹配 short_id，然后 file_id
+            logger.info(f"DB: get_file_by_id - Searching for identifier: {identifier}")
             cursor.execute("SELECT filename, filesize, upload_date, file_id, short_id FROM files WHERE short_id = ? OR file_id = ?", (identifier, identifier))
             result = cursor.fetchone()
             if result:
+                logger.info(f"DB: get_file_by_id - Found: {result['filename']} (file_id: {result['file_id']}, short_id: {result['short_id']})")
                 return {
                     "filename": result["filename"],
                     "filesize": result["filesize"],
@@ -333,6 +334,7 @@ def get_file_by_id(identifier: str) -> dict | None:
                     "file_id": result["file_id"],
                     "short_id": result["short_id"]
                 }
+            logger.warning(f"DB: get_file_by_id - Not found for identifier: {identifier}")
             return None
         finally:
             conn.close()

@@ -37,10 +37,21 @@ async def _start_bot(app: FastAPI, app_settings: dict) -> None:
     await _stop_bot(app)
     bot_app = create_bot_app(app_settings)
     app.state.bot_app = bot_app
-    await bot_app.initialize()
-    await bot_app.start()
-    await bot_app.updater.start_polling(drop_pending_updates=True)
-    logger.info("机器人已在后台启动")
+    try:
+        await bot_app.initialize()
+        await bot_app.bot.delete_webhook() # Explicitly delete webhook
+        await bot_app.start()
+        await bot_app.updater.start_polling(drop_pending_updates=True, clean=True) # Add clean=True
+        logger.info("机器人已在后台启动并开始轮询。")
+        app.state.bot_error = None
+        app.state.bot_ready = True
+    except Exception as e:
+        logger.error(f"启动机器人失败: {e}", exc_info=True)
+        app.state.bot_error = str(e)
+        app.state.bot_app = None
+        app.state.bot_ready = False
+        if "Conflict" in str(e):
+            logger.warning("Bot 启动冲突，请确保只有一个应用实例在运行！")
 
 async def apply_runtime_settings(app: FastAPI, *, start_bot: bool = True) -> None:
     async with app.state.settings_lock:

@@ -12,6 +12,7 @@ services:
       # 持久化数据目录 - 修改为本地相对路径，更通用
       - /mnt/d/PersonalFiles/SynologyDrive/tgcloud:/app/data
     environment:
+      - PYTHONUNBUFFERED=1
       # 可选：从 .env 文件读取环境变量
       # 如果你不使用 .env 文件，可以直接在这里配置
       - BOT_TOKEN=${BOT_TOKEN:-}

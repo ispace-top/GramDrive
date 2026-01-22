@@ -125,24 +125,28 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # 3. 确定文件/照片信息
     file_obj = None
     file_name = None
+    mime_type = None
     
     if message.document:
         file_obj = message.document
         file_name = file_obj.file_name
+        mime_type = file_obj.mime_type
     elif message.photo:
         # 选择分辨率最高的照片
         file_obj = message.photo[-1]
         # 为照片创建一个默认文件名
         file_name = f"photo_{message.message_id}.jpg"
+        mime_type = "image/jpeg" # PhotoSize object does not have mime_type, so we hardcode it
+    elif message.video:
+        file_obj = message.video
+        file_name = file_obj.file_name or f"video_{message.message_id}.mp4"
+        mime_type = file_obj.mime_type
 
     # 4. 如果成功获取到文件或照片对象，则处理它
     if file_obj and file_name:
         if file_obj.file_size < (20 * 1024 * 1024) and not file_name.endswith(".manifest"):
             # 使用复合ID "message_id:file_id"
             composite_id = f"{message.message_id}:{file_obj.file_id}"
-
-            # 获取MIME类型
-            mime_type = file_obj.mime_type
 
             short_id = database.add_file_metadata(
                 filename=file_name,
@@ -249,7 +253,7 @@ def create_bot_app(settings: dict) -> Application:
 
     # 2. 只处理文件和照片消息
     new_file_handler = MessageHandler(
-        (filters.UpdateType.MESSAGE | filters.UpdateType.CHANNEL_POST) & (filters.Document.ALL | filters.PHOTO),
+        (filters.UpdateType.MESSAGE | filters.UpdateType.CHANNEL_POST) & (filters.Document.ALL | filters.PHOTO | filters.VIDEO),
         handle_new_file,
     )
     application.add_handler(new_file_handler, group=0)
