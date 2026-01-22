@@ -122,7 +122,6 @@ function initData() {
                         // 不填充实际值
                     } else if (k === 'PICGO_API_KEY' && data.cfg.PICGO_API_KEY_SET) {
                         el.placeholder = '已配置 (********** Keep current if empty)';
-                        // 不填充实际值
                     } else if (k === 'PASS_WORD_SET') {
                         // PASS_WORD_SET 仅作判断用，不填充到表单
                     } else if (k === 'PASS_WORD') {
@@ -140,7 +139,34 @@ function initData() {
         });
 }
 
-// ... (existing togglePwd, fillOrigin, genKey, toggleAdvanced functions) ...
+// Helper for password visibility
+function togglePwd(id) {
+    const input = document.getElementById(id);
+    if (input.type === "password") {
+        input.type = "text";
+    } else {
+        input.type = "password";
+    }
+}
+
+// Fill base URL with current origin
+function fillOrigin() {
+    document.getElementById('BASE_URL').value = window.location.origin;
+}
+
+// Generate a random key for PicGo
+function genKey() {
+    const key = Array.from({length: 16}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    document.getElementById('PICGO_API_KEY').value = key;
+}
+
+// Toggle advanced options panel
+function toggleAdvanced() {
+    const advancedPanel = document.getElementById('advanced-panel');
+    if (advancedPanel) {
+        advancedPanel.classList.toggle('hidden');
+    }
+}
 
 async function saveConfig(apply = false) {
     const btn = document.getElementById(apply ? 'btn-finish' : 'btn-save');

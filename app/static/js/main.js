@@ -75,14 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Global Variables ---
-    const uploadArea = document.getElementById('upload-zone');
-    const fileInput = document.getElementById('file-picker');
-    const progressArea = document.getElementById('prog-zone');
-    const doneArea = document.getElementById('done-zone');
-    const searchInput = document.getElementById('file-search');
-    const sortByFilter = document.getElementById('file-sort-by'); // New global variable for sort by filter
-    const sortOrderFilter = document.getElementById('file-sort-order'); // New global variable for sort order filter
+    // Sort state managed in memory instead of dropdowns
+    let currentSort = {
+        field: localStorage.getItem('file-sort-by') || 'upload_date',
+        order: localStorage.getItem('file-sort-order') || 'desc'
+    };
+
 
     // --- File Fetching and Rendering ---
     async function fetchAndRenderFiles(category = '', searchTerm = '', sortBy = 'upload_date', sortOrder = 'desc') { // Added sortBy, sortOrder
@@ -131,22 +129,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const term = searchInput ? searchInput.value : '';
         const activeTab = document.querySelector('.category-tab.active');
         const category = activeTab ? (activeTab.dataset.category || '') : '';
-        const sortBy = sortByFilter ? sortByFilter.value : 'upload_date';
-        const sortOrder = sortOrderFilter ? sortOrderFilter.value : 'desc';
-
+        
         // Save sort preferences to LocalStorage
-        localStorage.setItem('file-sort-by', sortBy);
-        localStorage.setItem('file-sort-order', sortOrder);
+        localStorage.setItem('file-sort-by', currentSort.field);
+        localStorage.setItem('file-sort-order', currentSort.order);
 
-        fetchAndRenderFiles(category, term, sortBy, sortOrder);
+        fetchAndRenderFiles(category, term, currentSort.field, currentSort.order);
     };
-
-    // Load saved sort preferences from LocalStorage
-    const savedSortBy = localStorage.getItem('file-sort-by') || 'upload_date';
-    const savedSortOrder = localStorage.getItem('file-sort-order') || 'desc';
-
-    if (sortByFilter) sortByFilter.value = savedSortBy;
-    if (sortOrderFilter) sortOrderFilter.value = savedSortOrder;
 
     // Update visual indicators for initial sort
     document.querySelectorAll('.sortable-header').forEach(h => h.classList.remove('active'));
@@ -155,12 +144,12 @@ document.addEventListener('DOMContentLoaded', () => {
         icon.style.opacity = '0.3';
         icon.style.color = '';
     });
-    const activeHeader = document.querySelector(`.sortable-header[data-sort="${savedSortBy}"]`);
+    const activeHeader = document.querySelector(`.sortable-header[data-sort="${currentSort.field}"]`);
     if (activeHeader) {
         activeHeader.classList.add('active');
         const icon = activeHeader.querySelector('.sort-icon');
         if (icon) {
-            icon.classList.add('active', savedSortOrder);
+            icon.classList.add('active', currentSort.order);
             icon.style.opacity = '1';
             icon.style.color = 'var(--primary-color)';
         }
@@ -186,13 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         applyFiltersAndSort();
     });
 
-    if (sortByFilter) {
-        sortByFilter.addEventListener('change', applyFiltersAndSort);
-    }
-
-    if (sortOrderFilter) {
-        sortOrderFilter.addEventListener('change', applyFiltersAndSort);
-    }
+    // Category Tab switching
 
     // Table header sorting
     document.addEventListener('click', (e) => {
@@ -200,18 +183,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!header) return;
 
         const sortField = header.dataset.sort;
-        const currentSortBy = sortByFilter ? sortByFilter.value : 'upload_date';
-        const currentSortOrder = sortOrderFilter ? sortOrderFilter.value : 'desc';
 
         // If clicking same column, toggle order; otherwise default to desc
-        let newOrder = 'desc';
-        if (sortField === currentSortBy) {
-            newOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
+        if (sortField === currentSort.field) {
+            currentSort.order = currentSort.order === 'desc' ? 'asc' : 'desc';
+        } else {
+            currentSort.field = sortField;
+            currentSort.order = 'desc';
         }
-
-        // Update dropdown values
-        if (sortByFilter) sortByFilter.value = sortField;
-        if (sortOrderFilter) sortOrderFilter.value = newOrder;
 
         // Update visual indicators
         document.querySelectorAll('.sortable-header').forEach(h => h.classList.remove('active'));
@@ -222,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         header.classList.add('active');
         const icon = header.querySelector('.sort-icon');
-        icon.classList.add('active', newOrder);
+        icon.classList.add('active', currentSort.order);
         icon.style.opacity = '1';
         icon.style.color = 'var(--primary-color)';
 
@@ -233,10 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Upload Logic ---
     if (uploadArea && fileInput) {
-        uploadArea.addEventListener('click', () => {
-            fileInput.click();
-        });
-
         uploadArea.addEventListener('dragover', (event) => {
             event.preventDefault();
             uploadArea.style.borderColor = 'var(--primary-color)';
@@ -521,9 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initial fetch on load, applying current filter and sort selections
         const activeTab = document.querySelector('.category-tab.active');
         const initialCategory = activeTab ? (activeTab.dataset.category || '') : '';
-        const initialSortBy = sortByFilter ? sortByFilter.value : 'upload_date'; // Default sort
-        const initialSortOrder = sortOrderFilter ? sortOrderFilter.value : 'desc'; // Default order
-        fetchAndRenderFiles(initialCategory, '', initialSortBy, initialSortOrder);
+        fetchAndRenderFiles(initialCategory, '', currentSort.field, currentSort.order);
         
         let eventSource = null;
 

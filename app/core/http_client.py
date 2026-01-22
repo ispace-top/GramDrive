@@ -101,15 +101,16 @@ async def lifespan(app: FastAPI):
             app.state.bot_app = None
             app.state.bot_error = str(e)
 
-    # 4. 初始化并启动 DownloadService (如果 Telegram Bot 已准备就绪)
-    if app.state.bot_ready and app.state.bot_app: # Ensure bot is running, DownloadService needs TelegramService
+    # 4. 初始化并启动 DownloadService (只要配置了 Bot 就可以启动)
+    if app.state.bot_ready:
         try:
-            download_service_instance = await get_download_service(get_telegram_service())
+            telegram_service = get_telegram_service()
+            download_service_instance = await get_download_service(telegram_service)
             app.state.download_service = download_service_instance
             await download_service_instance.start()
             logger.info("DownloadService 已启动。")
         except Exception as e:
-            logger.error("启动 DownloadService 失败: %s", e)
+            logger.error("启动 DownloadService 失败: %s", e, exc_info=True)
             app.state.download_service = None
 
     yield # 应用在此处运行

@@ -3,6 +3,7 @@ import logging
 import os
 import httpx
 import time
+import uuid
 from typing import Dict, Any, List, Optional
 
 from .. import database
@@ -10,6 +11,10 @@ from ..core.config import get_app_settings
 from ..services.telegram_service import TelegramService
 
 logger = logging.getLogger(__name__)
+
+# Add a simple, in-memory queue for broadcasting events.
+# In a multi-worker setup, this would need to be replaced with something like Redis Pub/Sub.
+progress_event_queue = asyncio.Queue()
 
 class DownloadService:
     def __init__(self, telegram_service: TelegramService):
@@ -116,37 +121,70 @@ class DownloadService:
         semaphore = asyncio.Semaphore(settings['threads'])
         
         async def download_worker(file_info: Dict[str, Any]):
+            task_id = str(uuid.uuid4())
             async with semaphore:
                 file_id = file_info['file_id']
                 filename = file_info['filename']
+                total_size = file_info.get('filesize', 0)
                 logger.info("Attempting to download %s (ID: %s)", filename, file_id)
-                
-                try:
-                    # Get download URL from TelegramService
-                    download_url = await self.telegram_service.get_download_url(file_id.split(':', 1)[1]) # Use actual_file_id
-                    if not download_url:
-                        logger.warning("Could not get download URL for %s. Skipping.", filename)
-                        return
 
-                    # Create target directory
+                try:
+                    # Announce start
+                    await progress_event_queue.put({
+                        "task_id": task_id, "file_id": file_id, "filename": filename,
+                        "total_size": total_size, "status": "starting"
+                    })
+
+                    actual_file_id = file_id.split(':', 1)[-1]
+                    download_url = await self.telegram_service.get_download_url(actual_file_id)
+                    if not download_url:
+                        raise Exception("Could not get download URL")
+
                     target_dir = os.path.join(settings['download_dir'], database._get_file_category_from_mime(file_info.get('mime_type')))
                     os.makedirs(target_dir, exist_ok=True)
-                    local_filepath = os.path.join(target_dir, filename)
+                    
+                    # Generate new filename with timestamp
+                    import datetime
+                    current_time = datetime.datetime.now()
+                    timestamp_str = current_time.strftime("%Y-%m-%d_%H-%M-%S-%f")[:-3] # YYYY-MM-DD_HH-MM-SS-ms
 
-                    # Download file using httpx
-                    async with httpx.AsyncClient(timeout=60.0) as client:
+                    base_name, ext = os.path.splitext(filename)
+                    new_filename = f"{timestamp_str}_{base_name}{ext}"
+
+                    local_filepath = os.path.join(target_dir, new_filename)
+
+                    bytes_downloaded = 0
+                    last_update_time = time.time()
+
+                    async with httpx.AsyncClient(timeout=300.0) as client:
                         async with client.stream("GET", download_url) as response:
                             response.raise_for_status()
                             with open(local_filepath, "wb") as f:
                                 async for chunk in response.aiter_bytes():
                                     f.write(chunk)
+                                    bytes_downloaded += len(chunk)
+                                    
+                                    # Throttle progress updates to about once per second
+                                    current_time = time.time()
+                                    if current_time - last_update_time > 1:
+                                        await progress_event_queue.put({
+                                            "task_id": task_id, "file_id": file_id, "status": "downloading",
+                                            "downloaded": bytes_downloaded, "progress": (bytes_downloaded / total_size) if total_size > 0 else 0
+                                        })
+                                        last_update_time = current_time
 
-                    # Update database with local path
                     relative_local_path = os.path.relpath(local_filepath, start=settings['download_dir'])
                     database.update_local_path(file_id, relative_local_path)
+                    
+                    await progress_event_queue.put({"task_id": task_id, "file_id": file_id, "status": "completed"})
                     logger.info("Successfully downloaded %s to %s", filename, local_filepath)
+
                 except Exception as e:
                     logger.error("Failed to download %s (ID: %s): %s", filename, file_id, e)
+                    await progress_event_queue.put({
+                        "task_id": task_id, "file_id": file_id, "filename": filename,
+                        "status": "error", "error": str(e)
+                    })
 
         tasks = []
         while not self.download_queue.empty():

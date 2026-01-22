@@ -13,31 +13,79 @@ logger = logging.getLogger(__name__)
 
 @router.get("/api/stats/dashboard")
 async def get_dashboard_stats(settings: Settings = Depends(get_settings)):
-    """获取仪表板统计数据"""
+    """获取仪表板统计数据，并适配前端所需格式"""
     try:
-        stats = database.get_statistics()
+        raw_stats = database.get_statistics()
 
-        # 格式化文件大小为人类可读格式
-        def format_size(bytes_size):
+        def format_size(size_in_bytes):
+            if size_in_bytes is None:
+                return "0 B"
+            if size_in_bytes < 1024:
+                return f"{size_in_bytes} B"
             for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-                if bytes_size < 1024.0:
-                    return f"{bytes_size:.2f} {unit}"
-                bytes_size /= 1024.0
-            return f"{bytes_size:.2f} PB"
+                if size_in_bytes < 1024.0:
+                    return f"{size_in_bytes:.2f} {unit}"
+                size_in_bytes /= 1024.0
+            return f"{size_in_bytes:.2f} PB"
 
-        stats["total_size_formatted"] = format_size(stats["total_size"])
+        total_files = raw_stats.get("total_files", 0)
+        total_size = raw_stats.get("total_size", 0)
 
-        # 格式化类型统计中的大小
-        for type_name, type_data in stats["by_type"].items():
-            type_data["size_formatted"] = format_size(type_data["size"])
+        # 1. 获取总下载次数
+        total_downloads = raw_stats.get("total_downloads", 0)
+
+        # 2. 计算平均文件大小
+        avg_size = total_size / total_files if total_files > 0 else 0
+
+        # 3. 整理文件类型分布
+        file_types = []
+        type_labels = {
+            'image': '图片',
+            'video': '视频',
+            'audio': '音频',
+            'document': '文档',
+            'pdf': 'PDF',
+            'text': '文本',
+            'other': '其他'
+        }
+        for type_name, type_data in raw_stats.get("by_type", {}).items():
+            file_types.append({
+                "type": type_name,
+                "type_label": type_labels.get(type_name, '未知'),
+                "count": type_data.get("count", 0),
+                "size": type_data.get("size", 0),
+                "size_formatted": format_size(type_data.get("size", 0))
+            })
+
+        # 4. 整理热门文件并格式化大小
+        popular_files = []
+        for f in raw_stats.get("top_downloads", []):
+            f_copy = f.copy()
+            f_copy["filesize_formatted"] = format_size(f_copy.get("filesize", 0))
+            popular_files.append(f_copy)
+
+        # 5. 组装前端需要的数据结构
+        data_for_frontend = {
+            "total_count": total_files,
+            "total_size": total_size,
+            "total_size_formatted": format_size(total_size),
+            "total_downloads": total_downloads,
+            "avg_size": avg_size,
+            "avg_size_formatted": format_size(avg_size),
+            "file_types": file_types,
+            "popular_files": popular_files,
+            "recent_uploads": raw_stats.get("recent_uploads", []),
+            "local_files_count": raw_stats.get("local_files_count", 0),
+            "total_tags": raw_stats.get("total_tags", 0)
+        }
 
         return {
             "status": "success",
-            "data": stats
+            "data": data_for_frontend
         }
     except Exception as e:
-        logger.error("Error fetching statistics: %s", e)
-        raise http_error(500, "无法加载统计数据。", details=str(e))
+        logger.error("Error processing dashboard statistics: %s", e, exc_info=True)
+        raise http_error(500, "无法加载或处理统计数据。", details=str(e))
 
 
 @router.get("/api/stats/local-files")

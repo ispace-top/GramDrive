@@ -8,21 +8,6 @@
     <div class="flex-between">
         <h1 style="font-size: 24px; font-weight: 700;">文件管理</h1>
         <div style="display: flex; gap: 12px; flex: 1; justify-content: flex-end; min-width: 0;">
-            <!-- Sort By Filter -->
-            <div class="input-group" style="margin-bottom: 0; max-width: 150px; width: 100%;">
-                <select id="file-sort-by" class="input-field">
-                    <option value="upload_date">按日期</option>
-                    <option value="filename">按名称</option>
-                    <option value="filesize">按大小</option>
-                </select>
-            </div>
-            <!-- Sort Order -->
-            <div class="input-group" style="margin-bottom: 0; max-width: 100px; width: 100%;">
-                <select id="file-sort-order" class="input-field">
-                    <option value="desc">降序</option>
-                    <option value="asc">升序</option>
-                </select>
-            </div>
             <!-- Search Input -->
             <div class="input-group" style="margin-bottom: 0; max-width: 300px; width: 100%;">
                 <input type="text" id="file-search" class="input-field" placeholder="搜索文件..." style="width: 100%;">
@@ -209,8 +194,6 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
 <style>
 /* Basic Modal Styles (can be moved to ui.css) */
 .modal {
@@ -241,3 +224,8 @@
     cursor: pointer;
 }
 </style>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='/js/main.js') }}?v=4.1"></script>
+{% endblock %}

@@ -9,67 +9,14 @@
         <p class="text-muted">管理自动下载设置和本地文件</p>
     </div>
 
-    <!-- 自动下载配置 -->
-    <div class="card">
+    <div class="card" style="margin-top: 24px;">
         <div class="card-header">
-            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">自动下载配置</h2>
+            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">正在进行的下载</h2>
         </div>
         <div class="card-body">
-            <form id="autoDownloadForm">
-                <div class="form-group">
-                    <label class="form-label">
-                        <input type="checkbox" id="autoDownloadEnabled" style="margin-right: 8px;">
-                        启用自动下载
-                    </label>
-                    <p class="form-hint">自动下载频道中的文件到本地存储</p>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">文件类型</label>
-                    <div style="display: flex; gap: 16px; margin-top: 8px;">
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" value="image" class="fileTypeCheckbox" style="margin-right: 6px;">
-                            图片
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" value="video" class="fileTypeCheckbox" style="margin-right: 6px;">
-                            视频
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" value="audio" class="fileTypeCheckbox" style="margin-right: 6px;">
-                            音频
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" value="document" class="fileTypeCheckbox" style="margin-right: 6px;">
-                            文档
-                        </label>
-                    </div>
-                    <p class="form-hint">选择要自动下载的文件类型</p>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="maxSize">最大文件大小 (MB)</label>
-                    <input type="number" id="maxSize" class="form-input" min="1" max="2000" step="1" placeholder="50">
-                    <p class="form-hint">超过此大小的文件将不会自动下载</p>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="minSize">最小文件大小 (MB)</label>
-                    <input type="number" id="minSize" class="form-input" min="0" max="2000" step="1" placeholder="0">
-                    <p class="form-hint">小于此大小的文件将不会自动下载 (设置为 0 则不限制)</p>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="downloadDir">下载目录</label>
-                    <input type="text" id="downloadDir" class="form-input" placeholder="/app/downloads">
-                    <p class="form-hint">文件将保存到此目录，按日期和类型自动分类</p>
-                </div>
-
-                <div style="display: flex; gap: 12px;">
-                    <button type="submit" class="btn btn-primary">保存配置</button>
-                    <button type="button" class="btn btn-secondary" onclick="loadConfig()">重置</button>
-                </div>
-            </form>
+            <div id="ongoing-downloads-list">
+                <p id="no-ongoing-downloads" class="text-muted" style="text-align: center; padding: 20px;">当前没有下载任务</p>
+            </div>
         </div>
     </div>
 
@@ -119,6 +66,74 @@
         <div class="card-body">
             <div id="localFilesLoading" style="text-align: center; padding: 20px;">加载中...</div>
             <div id="localFilesList" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- 自动下载配置 -->
+    <div class="card" style="margin-top: 24px;">
+        <div class="card-header">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">自动下载配置</h2>
+        </div>
+        <div class="card-body">
+            <form id="autoDownloadForm">
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="autoDownloadEnabled" style="margin-right: 8px;">
+                        启用自动下载
+                    </label>
+                    <p class="form-hint">自动下载频道中的文件到本地存储</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">文件类型</label>
+                    <div style="display: flex; gap: 16px; margin-top: 8px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" value="all" class="fileTypeCheckbox" style="margin-right: 6px;">
+                            全部
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" value="image" class="fileTypeCheckbox" style="margin-right: 6px;">
+                            图片
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" value="video" class="fileTypeCheckbox" style="margin-right: 6px;">
+                            视频
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" value="audio" class="fileTypeCheckbox" style="margin-right: 6px;">
+                            音频
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" value="document" class="fileTypeCheckbox" style="margin-right: 6px;">
+                            文档
+                        </label>
+                    </div>
+                    <p class="form-hint">选择要自动下载的文件类型</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="maxSize">最大文件大小 (MB)</label>
+                    <input type="number" id="maxSize" class="form-input" min="1" max="10240" step="1" placeholder="50">
+                    <p class="form-hint">超过此大小的文件将不会自动下载</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="minSize">最小文件大小 (MB)</label>
+                    <input type="number" id="minSize" class="form-input" min="0" max="10240" step="1" placeholder="0">
+                    <p class="form-hint">小于此大小的文件将不会自动下载 (设置为 0 则不限制)</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="downloadDir">下载目录</label>
+                    <input type="text" id="downloadDir" class="form-input" placeholder="/app/downloads">
+                    <p class="form-hint">文件将保存到此目录，按日期和类型自动分类</p>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button type="submit" class="btn btn-primary">保存配置</button>
+                    <button type="button" class="btn btn-secondary" onclick="loadConfig()">重置</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -186,6 +201,50 @@
 .btn-sm {
     padding: 6px 12px;
     font-size: 14px;
+}
+
+.ongoing-download-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.ongoing-download-item:last-child {
+    border-bottom: none;
+}
+.ongoing-download-item .file-info {
+    flex: 1;
+    min-width: 0;
+}
+.ongoing-download-item .filename {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ongoing-download-item .status-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.ongoing-download-item .progress-bar-container {
+    width: 150px;
+    height: 8px;
+    background-color: var(--bg-surface-hover);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.ongoing-download-item .progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: var(--primary-color);
+    transition: width 0.2s;
+}
+.ongoing-download-item .progress-text {
+    font-size: 12px;
+    font-weight: 500;
+    width: 40px;
+    text-align: right;
 }
 </style>
 
@@ -370,5 +429,83 @@ function showToast(message, type) {
 loadConfig();
 loadLocalStats();
 loadLocalFiles();
+
+function initializeSSE() {
+    const ongoingList = document.getElementById('ongoing-downloads-list');
+    const noOngoingText = document.getElementById('no-ongoing-downloads');
+
+    const source = new EventSource('/api/downloads/progress-stream');
+
+    source.onmessage = function(event) {
+        if (event.data.startsWith(':')) { // Keep-alive
+            return;
+        }
+        
+        const task = JSON.parse(event.data);
+
+        // Hide the "no ongoing downloads" text if it's visible
+        if (noOngoingText && !noOngoingText.hidden) {
+            noOngoingText.hidden = true;
+        }
+
+        let taskElement = document.getElementById(`task-${task.task_id}`);
+
+        if (task.status === 'starting' && !taskElement) {
+            const el = document.createElement('div');
+            el.id = `task-${task.task_id}`;
+            el.className = 'ongoing-download-item';
+            el.innerHTML = `
+                <div class="file-info">
+                    <div class="filename">${task.filename}</div>
+                    <div class="status-text">正在开始...</div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: 0%;"></div>
+                </div>
+                <div class="progress-text">0%</div>
+            `;
+            ongoingList.appendChild(el);
+        } else if (taskElement && task.status === 'downloading') {
+            const progressBar = taskElement.querySelector('.progress-bar');
+            const progressText = taskElement.querySelector('.progress-text');
+            const statusText = taskElement.querySelector('.status-text');
+
+            const percent = Math.round(task.progress * 100);
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `${percent}%`;
+            statusText.textContent = `正在下载... ${formatBytes(task.downloaded)} / ${formatBytes(task.total_size)}`;
+        } else if (taskElement && task.status === 'completed') {
+            taskElement.querySelector('.progress-bar').style.width = '100%';
+            taskElement.querySelector('.progress-bar').style.backgroundColor = 'var(--success-color)';
+            taskElement.querySelector('.progress-text').textContent = '完成';
+            taskElement.querySelector('.status-text').textContent = '下载完成';
+            
+            // Remove after a delay and refresh local files list
+            setTimeout(() => {
+                taskElement.remove();
+                // Check if any actual download tasks are left in the list
+                // Filter out the 'no-ongoing-downloads' paragraph if it exists
+                const actualDownloadTasks = Array.from(ongoingList.children).filter(child => child.id !== 'no-ongoing-downloads');
+
+                if (actualDownloadTasks.length === 0 && noOngoingText) { 
+                    noOngoingText.hidden = false;
+                }
+                refreshLocalFiles(); // Refresh to show the newly downloaded file
+            }, 3000);
+        } else if (taskElement && task.status === 'error') {
+            taskElement.querySelector('.progress-bar').style.backgroundColor = 'var(--danger-color)';
+            taskElement.querySelector('.progress-text').textContent = '失败';
+            taskElement.querySelector('.status-text').textContent = `错误: ${task.error}`;
+        }
+    };
+
+    source.onerror = function() {
+        console.error("SSE connection failed.");
+        // The browser will automatically attempt to reconnect.
+    };
+}
+
+initializeSSE();
+
 </script>
 {% endblock %}

@@ -820,11 +820,12 @@ def get_statistics() -> dict:
         try:
             cursor = conn.cursor()
 
-            # 总文件数和总大小
-            cursor.execute("SELECT COUNT(*), COALESCE(SUM(filesize), 0) FROM files")
+            # 总文件数、总大小、总下载次数
+            cursor.execute("SELECT COUNT(*), COALESCE(SUM(filesize), 0), COALESCE(SUM(download_count), 0) FROM files")
             row = cursor.fetchone()
             total_files = row[0]
             total_size = row[1]
+            total_downloads = row[2]
 
             # 按MIME类型分类统计
             cursor.execute("""
@@ -889,6 +890,7 @@ def get_statistics() -> dict:
             return {
                 "total_files": total_files,
                 "total_size": total_size,
+                "total_downloads": total_downloads,
                 "by_type": by_type,
                 "recent_uploads": recent_uploads,
                 "top_downloads": top_downloads,

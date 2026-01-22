@@ -3,11 +3,15 @@ from __future__ import annotations
 import logging
 import os
 from typing import List
+import asyncio
+import json
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .. import database
+from ..services.download_service import progress_event_queue
 from .common import http_error
 
 router = APIRouter()
@@ -168,3 +172,26 @@ async def delete_local_file(payload: DeleteLocalFilePayload):
     except Exception as e:
         logger.error("Error deleting local file: %s", e)
         raise http_error(500, "删除本地文件失败。")
+
+
+@router.get("/api/downloads/progress-stream")
+async def download_progress_stream(request: Request):
+    """SSE endpoint for streaming download progress."""
+    async def event_generator():
+        while True:
+            if await request.is_disconnected():
+                logger.info("Client disconnected from download progress stream.")
+                break
+            
+            try:
+                event = await asyncio.wait_for(progress_event_queue.get(), timeout=30)
+                yield f"data: {json.dumps(event)}\n\n"
+                progress_event_queue.task_done()
+            except asyncio.TimeoutError:
+                # Send a keep-alive comment every 30s to prevent connection timeout
+                yield ": keep-alive\n\n"
+            except Exception as e:
+                logger.error("Error in download progress stream: %s", e, exc_info=True)
+                # Continue the loop
+    
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

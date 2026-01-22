@@ -16,19 +16,22 @@ from .events import file_update_queue, build_file_event
 logger = logging.getLogger(__name__)
 
 def _get_bot_settings(context: ContextTypes.DEFAULT_TYPE) -> dict:
+    """获取最新的应用设置。"""
+    # 直接从数据库读取以确保获取到的是最新值，而不是启动时的快照
     try:
-        return dict(context.application.bot_data.get("settings") or {})
+        return database.get_app_settings_from_db()
     except Exception:
         return {}
 
 
-async def _auto_download_file(file_obj, file_name: str, composite_id: str, settings: dict) -> str | None:
+async def _auto_download_file(file_obj, file_name: str, mime_type: str | None, composite_id: str, settings: dict) -> str | None:
     """
     自动下载文件到本地目录（如果启用）。
 
     Args:
         file_obj: Telegram文件对象
         file_name: 文件名
+        mime_type: 文件的MIME类型
         composite_id: 复合文件ID
         settings: 应用设置
 
@@ -41,43 +44,40 @@ async def _auto_download_file(file_obj, file_name: str, composite_id: str, setti
 
     # 检查文件大小限制
     max_size = settings.get("DOWNLOAD_MAX_SIZE", 52428800)
-    if file_obj.file_size > max_size:
-        logger.info(f"文件 {file_name} 大小 {file_obj.file_size} 超过限制 {max_size}，跳过自动下载")
+    min_size = settings.get("DOWNLOAD_MIN_SIZE", 0) # 新增最小大小限制
+    if file_obj.file_size > max_size or file_obj.file_size < min_size:
+        logger.info(f"文件 {file_name} 大小 {file_obj.file_size} 不在 [{min_size}, {max_size}] 范围内，跳过自动下载")
         return None
 
     # 检查文件类型过滤
     allowed_types = settings.get("DOWNLOAD_FILE_TYPES", "image,video").split(",")
     allowed_types = [t.strip().lower() for t in allowed_types if t.strip()]
 
-    mime_type, _ = mimetypes.guess_type(file_name)
-    if mime_type:
-        file_category = mime_type.split("/")[0]
-        if file_category not in allowed_types:
-            logger.info(f"文件 {file_name} 类型 {file_category} 不在允许列表中，跳过自动下载")
-            return None
-    else:
-        logger.info(f"无法识别文件 {file_name} 的MIME类型，跳过自动下载")
+    if not mime_type:
+        logger.info(f"文件 {file_name} 没有MIME类型，跳过自动下载")
+        return None
+
+    file_category = database._get_file_category_from_mime(mime_type)
+
+    if 'all' not in allowed_types and file_category not in allowed_types:
+        logger.info(f"文件 {file_name} 类型 {file_category} 不在允许列表中 {allowed_types}，跳过自动下载")
         return None
 
     # 构建本地存储路径：/download_dir/YYYY-MM-DD/type/filename
     download_dir = settings.get("DOWNLOAD_DIR", "/app/downloads")
     date_str = datetime.now().strftime("%Y-%m-%d")
+    
+    # 使用 category 作为子目录
     category_dir = file_category
-
     local_dir = Path(download_dir) / date_str / category_dir
     local_dir.mkdir(parents=True, exist_ok=True)
 
     # 处理文件名冲突（添加时间戳后缀）
     local_path = local_dir / file_name
     if local_path.exists():
-        name_parts = file_name.rsplit(".", 1)
-        if len(name_parts) == 2:
-            base_name, ext = name_parts
-            timestamp = datetime.now().strftime("%H%M%S")
-            file_name = f"{base_name}_{timestamp}.{ext}"
-        else:
-            timestamp = datetime.now().strftime("%H%M%S")
-            file_name = f"{file_name}_{timestamp}"
+        timestamp = datetime.now().strftime("%H%M%S%f")[:-3]
+        base_name, ext = os.path.splitext(file_name)
+        file_name = f"{base_name}_{timestamp}{ext}"
         local_path = local_dir / file_name
 
     # 下载文件
@@ -88,7 +88,7 @@ async def _auto_download_file(file_obj, file_name: str, composite_id: str, setti
         logger.info(f"已自动下载文件 {file_name} 到 {local_path}")
         return str(local_path)
     except Exception as e:
-        logger.error(f"自动下载文件 {file_name} 失败: {e}")
+        logger.error(f"自动下载文件 {file_name} 失败: {e}", exc_info=True)
         return None
 
 async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -142,7 +142,7 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             composite_id = f"{message.message_id}:{file_obj.file_id}"
 
             # 获取MIME类型
-            mime_type, _ = mimetypes.guess_type(file_name)
+            mime_type = file_obj.mime_type
 
             short_id = database.add_file_metadata(
                 filename=file_name,
@@ -152,10 +152,13 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
 
             # 尝试自动下载文件到本地
-            local_path = await _auto_download_file(file_obj, file_name, composite_id, settings)
-            if local_path:
-                database.update_local_path(composite_id, local_path)
-                logger.info(f"文件 {file_name} 已自动下载到 {local_path}")
+            local_path_abs = await _auto_download_file(file_obj, file_name, mime_type, composite_id, settings)
+            if local_path_abs:
+                # 计算并存储相对路径
+                download_dir = settings.get("DOWNLOAD_DIR", "/app/downloads")
+                relative_path = os.path.relpath(local_path_abs, start=download_dir)
+                database.update_local_path(composite_id, relative_path)
+                logger.info(f"文件 {file_name} 已自动下载到 {local_path_abs} (DB: {relative_path})")
 
             upload_date = message.date.astimezone(timezone.utc).isoformat()
             file_event = build_file_event(
