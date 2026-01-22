@@ -171,6 +171,7 @@ class DownloadService:
 
                     # 使用共享的 HTTP 客户端，而不是创建新的
                     client = self.http_client if self.http_client else httpx.AsyncClient(timeout=300.0)
+                    download_success = False
                     try:
                         async with client.stream("GET", download_url) as response:
                             response.raise_for_status()
@@ -187,16 +188,26 @@ class DownloadService:
                                             "downloaded": bytes_downloaded, "progress": (bytes_downloaded / total_size) if total_size > 0 else 0
                                         })
                                         last_update_time = current_time
+                        download_success = True
                     finally:
                         # 如果使用了临时客户端，需要关闭它
                         if not self.http_client and client:
                             await client.aclose()
 
-                    relative_local_path = os.path.relpath(local_filepath, start=settings['download_dir'])
-                    database.update_local_path(file_id, relative_local_path)
-                    
-                    await progress_event_queue.put({"task_id": task_id, "file_id": file_id, "status": "completed"})
-                    logger.info("Successfully downloaded %s to %s", filename, local_filepath)
+                    # 检查下载是否完整
+                    if download_success and os.path.exists(local_filepath):
+                        actual_file_size = os.path.getsize(local_filepath)
+                        if actual_file_size != total_size:
+                            logger.warning(f"【下载服务】文件大小不匹配，跳过标记已下载。文件名: {filename}，预期: {total_size} bytes，实际: {actual_file_size} bytes")
+                        else:
+                            relative_local_path = os.path.relpath(local_filepath, start=settings['download_dir'])
+                            result = database.update_local_path(file_id, relative_local_path)
+                            if result:
+                                logger.info(f"【下载服务】文件下载完成。文件名: {filename}，路径: {relative_local_path}")
+                            else:
+                                logger.error(f"【下载服务】数据库更新失败。文件名: {filename}，file_id: {file_id}")
+                    else:
+                        logger.error(f"【下载服务】文件下载失败或文件不存在。文件名: {filename}，路径: {local_filepath}")
 
                 except Exception as e:
                     logger.error("Failed to download %s (ID: %s): %s", filename, file_id, e)
