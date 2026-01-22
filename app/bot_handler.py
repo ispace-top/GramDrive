@@ -1,15 +1,15 @@
-import logging
 import json
 from datetime import timezone, datetime
 
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
+from .core.logging_config import get_logger
 from .services.telegram_service import get_telegram_service
 from . import database
 from .events import file_update_queue, build_file_event
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def _get_bot_settings(context: ContextTypes.DEFAULT_TYPE) -> dict:
     """获取最新的应用设置。"""
@@ -31,12 +31,13 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # 1. 确保有消息
     if not message:
+        logger.debug("【Bot】收到消息但无效，已忽略")
         return
 
     # 2. 检查消息来源是否为指定的频道/群组
     channel_identifier = settings.get("CHANNEL_NAME")
     if not channel_identifier:
-        logger.error("CHANNEL_NAME 未在 .env 中设置，无法处理文件")
+        logger.warning("【Bot】CHANNEL_NAME 未设置，无法处理文件。消息ID: %d", message.message_id if message else 'unknown')
         return
 
     chat = message.chat
@@ -50,13 +51,14 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             is_allowed = True
 
     if not is_allowed:
+        logger.debug(f"【Bot】消息来自未授权的聊天。聊天ID: {chat.id}，消息ID: {message.message_id}")
         return
 
     # 3. 确定文件/照片信息
     file_obj = None
     file_name = None
     mime_type = None
-    
+
     if message.document:
         file_obj = message.document
         file_name = file_obj.file_name
@@ -77,6 +79,7 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if file_obj.file_size < (20 * 1024 * 1024) and not file_name.endswith(".manifest"):
             # 使用复合ID "message_id:file_id"
             composite_id = f"{message.message_id}:{file_obj.file_id}"
+            logger.info(f"【Bot】处理新文件。文件名: {file_name}，大小: {file_obj.file_size / 1024 / 1024:.2f}MB，消息ID: {message.message_id}")
 
             short_id = database.add_file_metadata(
                 filename=file_name,
