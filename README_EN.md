@@ -8,7 +8,7 @@
   <p>
     <a href="https://github.com/ispace-top/GramDrive/releases"><img src="https://img.shields.io/github/v/release/ispace-top/GramDrive?color=blue" alt="Version"></a>
     <a href="#"><img src="https://img.shields.io/badge/python-3.11+-green.svg" alt="Python"></a>
-    <a href="https://hub.docker.com/r/ispace/gramdrive"><img src="https://img.shields.io/docker/pulls/ispace/gramdrive" alt="Docker Pulls"></a>
+    <a href="https://hub.docker.com/r/wapedkj/gramdrive"><img src="https://img.shields.io/docker/pulls/wapedkj/gramdrive" alt="Docker Pulls"></a>
     <a href="LICENSE"><img src="https://img.shields.io/github/license/ispace-top/GramDrive" alt="License"></a>
     <a href="#"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg" alt="Platform"></a>
   </p>
@@ -73,6 +73,78 @@
 
 ### 🐳 Docker Deployment (Recommended)
 
+#### Quick Start (Using Pre-built Image)
+
+The simplest way without building locally:
+
+1. **Create directory structure**
+   ```bash
+   mkdir -p ../GramDrive/data ../GramDrive/downloads
+   cd ../GramDrive
+   ```
+
+2. **Create `docker-compose.yml` file**
+   ```yaml
+   version: '3.8'
+   services:
+     gramdrive:
+       image: wapedkj/gramdrive:latest
+       container_name: gramdrive
+       restart: unless-stopped
+       ports:
+         - "8000:8000"
+       volumes:
+         - ./data:/app/data
+         - ./downloads:/app/downloads
+       environment:
+         - PYTHONUNBUFFERED=1
+         - BOT_TOKEN=${BOT_TOKEN:-}
+         - CHANNEL_NAME=${CHANNEL_NAME:-}
+         - PASS_WORD=${PASS_WORD:-}
+         - PICGO_API_KEY=${PICGO_API_KEY:-}
+         - BASE_URL=localhost
+       env_file:
+         - .env
+       healthcheck:
+         test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+         interval: 30s
+         timeout: 10s
+         retries: 3
+         start_period: 40s
+   ```
+
+3. **Create `.env` file** (optional)
+   ```bash
+   cat > .env << EOF
+   BOT_TOKEN=your_bot_token_here
+   CHANNEL_NAME=@your_channel_name
+   PASS_WORD=your_admin_password
+   PICGO_API_KEY=optional_api_key
+   BASE_URL=localhost
+   EOF
+   ```
+
+4. **Pull image and start the application**
+   ```bash
+   docker-compose pull
+   docker-compose up -d
+   ```
+
+5. **Access the web interface**
+   ```
+   http://localhost:8000
+   ```
+
+6. **Initial Setup**
+   - Open the web interface
+   - Set your admin password
+   - Configure Bot Token and Channel Name in Settings
+   - Click "Apply" to start the bot
+
+#### Source Code Deployment (Build Locally)
+
+If you need to modify the source code or use the latest development version:
+
 1. **Clone the repository**
    ```bash
    git clone https://github.com/ispace-top/GramDrive.git
@@ -95,9 +167,9 @@
    EOF
    ```
 
-4. **Start the application**
+4. **Build and start the application**
    ```bash
-   docker-compose up -d
+   docker-compose up -d --build
    ```
 
 5. **Access the web interface**
