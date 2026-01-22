@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse, JSONResponse
+from starlette.middleware.proxy_fix import ProxyFixMiddleware
 
 # 导入我们的新生命周期管理器和路由
 from .core.http_client import lifespan
@@ -26,6 +27,13 @@ app = FastAPI(
     title="Gram Drive",
     description="一个基于 Telegram 的个人网盘服务。",
     version="2.0.0"
+)
+
+# 添加 ProxyFixMiddleware - 这必须是第一个中间件，用于正确处理反向代理的请求
+# 这个中间件会读取 X-Forwarded-* 头信息并修复请求对象中的 scheme、client、host 等
+app.add_middleware(
+    ProxyFixMiddleware,
+    trusted_hosts=["*"],  # 在生产环境中建议限制具体的主机
 )
 
 COOKIE_NAME = "tgstate_session"
