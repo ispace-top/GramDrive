@@ -140,18 +140,23 @@ class DownloadService:
                     if not download_url:
                         raise Exception("Could not get download URL")
 
-                    target_dir = os.path.join(settings['download_dir'], database._get_file_category_from_mime(file_info.get('mime_type')))
-                    os.makedirs(target_dir, exist_ok=True)
-                    
-                    # Generate new filename with timestamp
+                    # 优化的目录结构：/download_dir/类型/日期/文件名
                     import datetime
                     current_time = datetime.datetime.now()
-                    timestamp_str = current_time.strftime("%Y%m%d_%f")[:-3] # YYYYMMDD_ms
+                    date_str = current_time.strftime("%Y-%m-%d")  # YYYY-MM-DD
 
+                    file_category = database._get_file_category_from_mime(file_info.get('mime_type'))
+                    target_dir = os.path.join(settings['download_dir'], file_category, date_str)
+                    os.makedirs(target_dir, exist_ok=True)
+
+                    # 处理文件名冲突（添加时间戳后缀）
                     base_name, ext = os.path.splitext(filename)
-                    new_filename = f"{timestamp_str}_{base_name}{ext}"
+                    local_filepath = os.path.join(target_dir, filename)
 
-                    local_filepath = os.path.join(target_dir, new_filename)
+                    if os.path.exists(local_filepath):
+                        timestamp_str = current_time.strftime("%H%M%S")
+                        new_filename = f"{base_name}_{timestamp_str}{ext}"
+                        local_filepath = os.path.join(target_dir, new_filename)
 
                     bytes_downloaded = 0
                     last_update_time = time.time()

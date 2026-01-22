@@ -553,12 +553,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let html = '';
         if (isGridView) {
+             // 判断是否为图片类型，使用缩略图
+             const mimeType = file.mime_type || '';
+             const isImage = mimeType.startsWith('image/');
+             const imgSrc = isImage
+                ? `/api/thumbnail/${file.short_id || file.file_id}?size=medium`
+                : fileUrl;
+             const imgOnerror = isImage ? `onerror="this.src='${fileUrl}'"` : '';
+
              html = `
-                <div class="file-item image-card clickable-file-row" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-body);" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}" data-file-type="${file.mime_type || 'application/octet-stream'}">
+                <div class="file-item image-card clickable-file-row" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-body);" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}" data-file-type="${mimeType}">
                     <div style="position: relative; aspect-ratio: 16/9; background: #000;">
-                        <img src="${fileUrl}" loading="lazy" style="width: 100%; height: 100%; object-fit: contain;" alt="${file.filename}">
+                        <img src="${imgSrc}" loading="lazy" style="width: 100%; height: 100%; object-fit: contain;" alt="${file.filename}" ${imgOnerror}>
                         <div style="position: absolute; top: 8px; left: 8px;">
-                            <input type="checkbox" class="file-checkbox" data-file-id="${file.file_id}" style="width: 16px; height: 16px; cursor: pointer;">
+                            <input type="checkbox" class="file-checkbox" data-file-id="${file.file_id}" style="width: 16px; height: 16px; cursor: pointer;" onclick="event.stopPropagation()">
                         </div>
                     </div>
                     <div style="padding: 12px;">
