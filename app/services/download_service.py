@@ -8,30 +8,32 @@ from typing import Dict, Any, List, Optional
 
 from .. import database
 from ..core.config import get_app_settings
+from ..core.logging_config import get_logger
 from ..services.telegram_service import TelegramService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Add a simple, in-memory queue for broadcasting events.
 # In a multi-worker setup, this would need to be replaced with something like Redis Pub/Sub.
 progress_event_queue = asyncio.Queue()
 
 class DownloadService:
-    def __init__(self, telegram_service: TelegramService):
+    def __init__(self, telegram_service: TelegramService, http_client: httpx.AsyncClient = None):
         self.telegram_service = telegram_service
+        self.http_client = http_client  # 使用共享的 HTTP 客户端
         self.running = False
         self.download_task = None
         self.download_queue: asyncio.Queue = asyncio.Queue()
-        logger.info("DownloadService initialized.")
+        logger.info("【下载服务】已初始化")
 
     async def start(self):
         if self.running:
-            logger.warning("DownloadService is already running.")
+            logger.warning("【下载服务】已在运行，无法重复启动")
             return
-        logger.info("Starting DownloadService...")
+        logger.info("【下载服务】正在启动...")
         self.running = True
         self.download_task = asyncio.create_task(self._monitor_and_download())
-        logger.info("DownloadService started.")
+        logger.info("【下载服务】已启动")
 
     async def stop(self):
         if not self.running:
@@ -161,14 +163,16 @@ class DownloadService:
                     bytes_downloaded = 0
                     last_update_time = time.time()
 
-                    async with httpx.AsyncClient(timeout=300.0) as client:
+                    # 使用共享的 HTTP 客户端，而不是创建新的
+                    client = self.http_client if self.http_client else httpx.AsyncClient(timeout=300.0)
+                    try:
                         async with client.stream("GET", download_url) as response:
                             response.raise_for_status()
                             with open(local_filepath, "wb") as f:
                                 async for chunk in response.aiter_bytes():
                                     f.write(chunk)
                                     bytes_downloaded += len(chunk)
-                                    
+
                                     # Throttle progress updates to about once per second
                                     current_time = time.time()
                                     if current_time - last_update_time > 1:
@@ -177,6 +181,10 @@ class DownloadService:
                                             "downloaded": bytes_downloaded, "progress": (bytes_downloaded / total_size) if total_size > 0 else 0
                                         })
                                         last_update_time = current_time
+                    finally:
+                        # 如果使用了临时客户端，需要关闭它
+                        if not self.http_client and client:
+                            await client.aclose()
 
                     relative_local_path = os.path.relpath(local_filepath, start=settings['download_dir'])
                     database.update_local_path(file_id, relative_local_path)
@@ -200,10 +208,10 @@ class DownloadService:
         logger.info("Finished processing download queue.")
 
 
-async def get_download_service(telegram_service: TelegramService = None) -> DownloadService:
+async def get_download_service(telegram_service: TelegramService = None, http_client: httpx.AsyncClient = None) -> DownloadService:
     if not hasattr(get_download_service, "_instance"):
         if telegram_service is None:
             raise ValueError("TelegramService instance must be provided on first call.")
-        get_download_service._instance = DownloadService(telegram_service)
+        get_download_service._instance = DownloadService(telegram_service, http_client)
     return get_download_service._instance
 

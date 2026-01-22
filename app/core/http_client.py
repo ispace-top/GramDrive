@@ -128,10 +128,10 @@ async def lifespan(app: FastAPI):
     if app.state.bot_ready:
         try:
             telegram_service = get_telegram_service()
-            download_service_instance = await get_download_service(telegram_service)
+            download_service_instance = await get_download_service(telegram_service, http_client)
             app.state.download_service = download_service_instance
             await download_service_instance.start()
-            logger.info("DownloadService 已启动。")
+            logger.info("【下载服务】已启动，使用共享的 HTTP 连接池")
         except Exception as e:
             logger.error("启动 DownloadService 失败: %s", e, exc_info=True)
             app.state.download_service = None
