@@ -39,9 +39,17 @@ async def _start_bot(app: FastAPI, app_settings: dict) -> None:
     app.state.bot_app = bot_app
     try:
         await bot_app.initialize()
-        await bot_app.bot.delete_webhook() # Explicitly delete webhook
+
+        # 强制删除webhook和清理旧连接
+        logger.info("正在清理Telegram Bot旧连接...")
+        await bot_app.bot.delete_webhook(drop_pending_updates=True)
+
+        # 等待2秒让Telegram服务器完全清理
+        import asyncio
+        await asyncio.sleep(2)
+
         await bot_app.start()
-        await bot_app.updater.start_polling(drop_pending_updates=True) # Remove clean=True
+        await bot_app.updater.start_polling(drop_pending_updates=True)
         logger.info("机器人已在后台启动并开始轮询。")
         app.state.bot_error = None
         app.state.bot_ready = True
@@ -51,7 +59,11 @@ async def _start_bot(app: FastAPI, app_settings: dict) -> None:
         app.state.bot_app = None
         app.state.bot_ready = False
         if "Conflict" in str(e):
-            logger.warning("Bot 启动冲突，请确保只有一个应用实例在运行！")
+            logger.warning("Bot 启动冲突！可能的原因：")
+            logger.warning("1. 有多个应用实例在运行")
+            logger.warning("2. 旧的Bot实例还没有完全关闭")
+            logger.warning("3. 在其他地方（如开发环境）也在运行同一个Bot")
+            logger.warning("建议：停止所有容器，等待10秒后重新启动")
 
 async def apply_runtime_settings(app: FastAPI, *, start_bot: bool = True) -> None:
     async with app.state.settings_lock:
