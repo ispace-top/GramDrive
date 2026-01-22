@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import uuid
 import telegram
 from fastapi import APIRouter, Request, Response, HTTPException
@@ -10,11 +9,12 @@ from telegram.request import HTTPXRequest
 from .. import database
 from ..core.config import get_app_settings
 from ..core.http_client import apply_runtime_settings
+from ..core.logging_config import get_logger
 from .auth import COOKIE_NAME
 from .common import http_error
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PasswordRequest(BaseModel):

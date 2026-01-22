@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import mimetypes
-import logging
 from typing import List, Optional
 from urllib.parse import quote
 
@@ -13,13 +12,14 @@ from pydantic import BaseModel
 from .. import database
 from ..core.config import get_app_settings
 from ..core.http_client import get_http_client
+from ..core.logging_config import get_logger
 from ..services.download_accelerator import DownloadAccelerator
 from ..services.telegram_service import TelegramService, get_telegram_service
 from .common import http_error
 
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 async def serve_file(
     file_id: str,
@@ -296,9 +296,10 @@ async def delete_file(
     try:
         telegram_service = get_telegram_service()
     except Exception:
+        logger.error("【删除】配置缺失：无法初始化 Telegram 服务")
         raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，删除不可用", code="cfg_missing")
 
-    logger.info("请求删除文件: %s", file_id)
+    logger.info(f"【删除】请求删除文件。文件ID: {file_id}")
     delete_result = await telegram_service.delete_file_with_chunks(file_id)
 
     if delete_result.get("main_message_deleted"):
@@ -306,20 +307,20 @@ async def delete_file(
         delete_result["db_status"] = "deleted" if was_deleted_from_db else "not_found_in_db"
     else:
         # 即使 Telegram 删除失败（可能已手动删除），我们也尝试从 DB 删除，避免死数据
-        logger.warning(f"Telegram 删除报告失败 ({delete_result.get('error')})，但尝试强制清理 DB: {file_id}")
+        logger.warning(f"【删除】Telegram 删除报告失败 ({delete_result.get('error')})，但尝试强制清理 DB。文件ID: {file_id}")
         was_deleted_from_db = database.delete_file_metadata(file_id)
         delete_result["db_status"] = "force_deleted" if was_deleted_from_db else "not_found_in_db"
 
     # 只要 DB 删除了，或者 TG 删除了，我们都视为成功
     if delete_result.get("status") == "success" or delete_result.get("db_status") in ("deleted", "force_deleted"):
-        logger.info("删除操作完成: %s", file_id)
+        logger.info(f"【删除】删除操作完成。文件ID: {file_id}，状态: {delete_result.get('db_status')}")
         return {"status": "ok", "message": f"文件 {file_id} 已删除。", "details": delete_result}
 
     if delete_result.get("status") == "partial_failure":
-        logger.warning("删除部分失败: %s", file_id)
+        logger.warning(f"【删除】删除部分失败。文件ID: {file_id}，详情: {delete_result}")
         raise http_error(500, f"文件 {file_id} 删除部分失败。", code="delete_partial_failure", details=delete_result)
 
-    logger.warning("删除失败: %s", file_id)
+    logger.warning(f"【删除】删除失败。文件ID: {file_id}，错误: {delete_result}")
     raise http_error(400, f"删除文件 {file_id} 时出错。", code="delete_failed", details=delete_result)
 
 
@@ -334,7 +335,10 @@ async def batch_delete_files(
     try:
         telegram_service = get_telegram_service()
     except Exception:
+        logger.error("【批量删除】配置缺失：无法初始化 Telegram 服务")
         raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，批量删除不可用", code="cfg_missing")
+
+    logger.info(f"【批量删除】开始批量删除。文件数: {len(request_data.file_ids)}")
 
     successful_deletions = []
     failed_deletions = []
@@ -344,11 +348,13 @@ async def batch_delete_files(
             response = await delete_file(file_id)
             successful_deletions.append(response)
         except Exception as e:
+            logger.warning(f"【批量删除】单个文件删除失败。文件ID: {file_id}，错误: {str(e)}")
             if hasattr(e, "detail"):
                 failed_deletions.append(e.detail)
             else:
                 failed_deletions.append({"file_id": file_id, "error": str(e)})
 
+    logger.info(f"【批量删除】批量删除完成。成功: {len(successful_deletions)}，失败: {len(failed_deletions)}")
     return {"status": "completed", "deleted": successful_deletions, "failed": failed_deletions}
 
 

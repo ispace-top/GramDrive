@@ -1,6 +1,5 @@
 import asyncio
 import io
-import logging
 import os
 import mimetypes
 import time
@@ -10,13 +9,14 @@ import telegram
 from telegram.request import HTTPXRequest
 
 from ..core.config import get_app_settings
+from ..core.logging_config import get_logger
 from .. import database
 
 # Telegram Bot API 对通过 getFile 方法下载的文件有 20MB 的限制。
 # tgState 将文件按 19.5MB 分块上传，并通过 .manifest 文件记录原始文件名与分块列表。
 CHUNK_SIZE_BYTES = int(19.5 * 1024 * 1024)
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Add a simple in-memory cache for download URLs
 _download_url_cache = {}
@@ -46,9 +46,10 @@ class TelegramService:
                     filename=chunk_name
                 )
             if message.document:
+                logger.debug(f"【Telegram】分块上传成功。分块名: {chunk_name}，file_id: {message.document.file_id[:16]}...")
                 return message.document.file_id
         except Exception as e:
-            logger.error("上传分块 %s 到 Telegram 时出错: %s", chunk_name, e)
+            logger.error(f"【Telegram】上传分块失败。分块名: {chunk_name}，错误: {str(e)}", exc_info=e)
         return None
 
     async def _upload_as_chunks(self, file_path: str, original_filename: str) -> str | None:
@@ -57,7 +58,7 @@ class TelegramService:
         """
         chunk_file_ids = []
         first_message_id = None
-        
+
         try:
             with open(file_path, "rb") as f:
                 chunk_number = 1
@@ -65,10 +66,10 @@ class TelegramService:
                     chunk = f.read(CHUNK_SIZE_BYTES)
                     if not chunk:
                         break
-                    
+
                     chunk_name = f"{original_filename}.part{chunk_number}"
-                    logger.info("正在上传分块: %s", chunk_name)
-                    
+                    logger.info(f"【Telegram】正在上传分块。分块名: {chunk_name}，分块号: {chunk_number}")
+
                     with io.BytesIO(chunk) as chunk_io:
                         # 如果是第一个块，正常发送。否则，作为对第一个块的回复发送。
                         reply_to_id = first_message_id if first_message_id else None
@@ -78,26 +79,26 @@ class TelegramService:
                             filename=chunk_name,
                             reply_to_message_id=reply_to_id
                         )
-                    
+
                     # 如果是第一个块，保存其 message_id
                     if not first_message_id:
                         first_message_id = message.message_id
-                    
+
                     # 关键变更：存储复合ID (message_id:file_id) 而不是只有 file_id
                     chunk_file_ids.append(f"{message.message_id}:{message.document.file_id}")
                     chunk_number += 1
         except IOError as e:
-            logger.error("读取或上传文件块时出错: %s", e)
+            logger.error(f"【Telegram】读取文件时出错。文件名: {original_filename}，错误: {str(e)}", exc_info=e)
             return None
         except Exception as e:
-            logger.error("发送文件块时出错: %s", e)
+            logger.error(f"【Telegram】发送文件分块时出错。文件名: {original_filename}，错误: {str(e)}", exc_info=e)
             return None
 
         # 生成并上传清单文件，同样作为对第一个块的回复
         manifest_content = f"tgstate-blob\n{original_filename}\n" + "\n".join(chunk_file_ids)
         manifest_name = f"{original_filename}.manifest"
-        
-        logger.info("所有分块上传完毕。正在上传清单文件")
+
+        logger.info(f"【Telegram】所有分块上传完毕。正在上传清单文件。文件名: {manifest_name}，分块数: {len(chunk_file_ids)}")
         try:
             with io.BytesIO(manifest_content.encode('utf-8')) as manifest_file:
                 message = await self.bot.send_document(
@@ -107,7 +108,7 @@ class TelegramService:
                     reply_to_message_id=first_message_id
                 )
             if message.document:
-                logger.info("清单文件上传成功")
+                logger.info(f"【Telegram】清单文件上传成功。文件名: {manifest_name}")
                 # 将大文件的元数据存入数据库
                 total_size = os.path.getsize(file_path)
                 # 创建复合ID，格式为 "message_id:file_id"
@@ -121,15 +122,15 @@ class TelegramService:
                 )
                 return short_id # 返回 short_id
         except Exception as e:
-            logger.error("上传清单文件时出错: %s", e)
-        
+            logger.error(f"【Telegram】上传清单文件时出错。文件名: {manifest_name}，错误: {str(e)}", exc_info=e)
+
         return None
 
     async def upload_file(self, file_path: str, file_name: str) -> str | None:
         """
         将文件上传到指定的 Telegram 频道。
         如果文件大小大于等于 CHUNK_SIZE_BYTES (约 19.5MB)，则使用分块 + manifest 机制上传。
-        
+
         参数:
             file_path: 文件的本地路径。
             file_name: 文件名。
@@ -138,27 +139,23 @@ class TelegramService:
             如果成功，则返回文件的 short_id，否则返回 None。
         """
         if not self.channel_name:
-            logger.error("环境变量中未设置 CHANNEL_NAME")
+            logger.error("【Telegram】环境变量中未设置 CHANNEL_NAME")
             return None
-        
+
         try:
             file_size = os.path.getsize(file_path)
         except OSError as e:
-            logger.error("无法获取文件大小: %s", e)
+            logger.error(f"【Telegram】无法获取文件大小。文件路径: {file_path}，错误: {str(e)}", exc_info=e)
             return None
 
         if file_size >= CHUNK_SIZE_BYTES:
             logger.info(
-                "文件大小 %.2fMB >= %.2fMB，启动分块上传",
-                file_size / 1024 / 1024,
-                CHUNK_SIZE_BYTES / 1024 / 1024,
+                f"【Telegram】文件大小 {file_size / 1024 / 1024:.2f}MB >= {CHUNK_SIZE_BYTES / 1024 / 1024:.2f}MB，启动分块上传。文件名: {file_name}"
             )
             return await self._upload_as_chunks(file_path, file_name)
-        
+
         logger.info(
-            "文件大小 %.2fMB < %.2fMB，直接上传",
-            file_size / 1024 / 1024,
-            CHUNK_SIZE_BYTES / 1024 / 1024,
+            f"【Telegram】文件大小 {file_size / 1024 / 1024:.2f}MB < {CHUNK_SIZE_BYTES / 1024 / 1024:.2f}MB，直接上传。文件名: {file_name}"
         )
         try:
             with open(file_path, "rb") as document_file:
@@ -178,10 +175,11 @@ class TelegramService:
                     filesize=file_size,
                     mime_type=mime_type
                 )
+                logger.info(f"【Telegram】文件上传成功。文件名: {file_name}，short_id: {short_id}")
                 return short_id # 返回 short_id
         except Exception as e:
-            logger.error("上传文件到 Telegram 时出错: %s", e)
-        
+            logger.error(f"【Telegram】上传文件到 Telegram 时出错。文件名: {file_name}，错误: {str(e)}", exc_info=e)
+
         return None
 
     async def get_download_url(self, file_id: str) -> str | None:

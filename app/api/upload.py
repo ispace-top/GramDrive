@@ -3,19 +3,19 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-import logging
 from typing import Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, Header, UploadFile, Request
 
 from ..core.config import Settings, get_app_settings, get_settings
+from ..core.logging_config import get_logger
 from ..services.telegram_service import get_telegram_service
 from .common import ensure_upload_auth, http_error
 
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 import re
@@ -33,14 +33,15 @@ async def upload_file(
 ):
     app_settings = get_app_settings()
     if not (app_settings.get("BOT_TOKEN") or "").strip() or not (app_settings.get("CHANNEL_NAME") or "").strip():
+        logger.error("【上传】缺少配置：BOT_TOKEN 或 CHANNEL_NAME")
         raise http_error(503, "缺少 BOT_TOKEN 或 CHANNEL_NAME，无法上传", code="cfg_missing")
 
     submitted_key = x_api_key or key or token
     if not submitted_key and authorization and authorization.startswith("Bearer "):
         submitted_key = authorization.split(" ", 1)[1]
-        
+
     ensure_upload_auth(request, app_settings, submitted_key)
-    logger.info("开始上传: %s", file.filename)
+    logger.info(f"【上传】开始上传文件。文件名: {file.filename}，大小: {file.size or 'unknown'} bytes")
 
     temp_file_path = None
     try:
@@ -51,7 +52,7 @@ async def upload_file(
         telegram_service = get_telegram_service()
         file_id = await telegram_service.upload_file(temp_file_path, file.filename)
     except Exception as e:
-        logger.error("上传失败: %s: %s", file.filename, e)
+        logger.error(f"【上传】上传失败。文件名: {file.filename}，错误: {str(e)}", exc_info=e)
         raise http_error(500, "文件上传失败。", code="upload_failed", details=str(e))
     finally:
         if temp_file_path and os.path.exists(temp_file_path):
@@ -61,17 +62,17 @@ async def upload_file(
                 pass
 
     if not file_id:
-        logger.error("上传失败（未返回 file_id）: %s", file.filename)
+        logger.error(f"【上传】上传失败：未返回 file_id。文件名: {file.filename}")
         raise http_error(500, "文件上传失败。", code="upload_failed")
 
     # 构造短链 URL: /d/{short_id}
     # 这里的 file_id 实际上是 short_id
     file_path = f"/d/{file_id}"
-    
+
     # 始终返回相对路径，前端负责拼接 origin
     full_url = file_path
 
-    logger.info("上传成功: %s -> %s", file.filename, file_id)
+    logger.info(f"【上传】上传成功。文件名: {file.filename} -> ID: {file_id}")
     return {
         "file_id": file_id,          # 这里的 file_id 是用于分享的 ID (即 short_id)
         "short_id": file_id,         # 兼容旧字段
