@@ -112,7 +112,7 @@ def init_db() -> None:
                     pass_word TEXT,
                     picgo_api_key TEXT,
                     base_url TEXT,
-                    auto_download_enabled INTEGER DEFAULT 0,
+                    auto_download_enabled INTEGER DEFAULT 1,
                     download_dir TEXT DEFAULT '/app/downloads',
                     download_file_types TEXT DEFAULT 'image,video',
                     download_max_size INTEGER DEFAULT 52428800,
@@ -127,7 +127,9 @@ def init_db() -> None:
             if "auto_download_enabled" not in settings_columns:
                 logger.info("Adding auto_download_enabled to app_settings...")
                 try:
-                    cursor.execute("ALTER TABLE app_settings ADD COLUMN auto_download_enabled INTEGER DEFAULT 0")
+                    cursor.execute("ALTER TABLE app_settings ADD COLUMN auto_download_enabled INTEGER DEFAULT 1")
+                    # 更新现有记录为启用状态
+                    cursor.execute("UPDATE app_settings SET auto_download_enabled = 1 WHERE auto_download_enabled IS NULL")
                 except Exception as e:
                     logger.error("Failed to add auto_download_enabled: %s", e)
 
@@ -166,8 +168,10 @@ def init_db() -> None:
                 except Exception as e:
                     logger.error("Failed to add download_threads: %s", e)
 
-            # 确保存在单行设置记录
-            cursor.execute("INSERT OR IGNORE INTO app_settings (id) VALUES (1)")
+            # 确保存在单行设置记录，并默认启用自动下载
+            cursor.execute("INSERT OR IGNORE INTO app_settings (id, auto_download_enabled) VALUES (1, 1)")
+            # 如果记录已存在但 auto_download_enabled 为 NULL 或 0，更新为 1
+            cursor.execute("UPDATE app_settings SET auto_download_enabled = 1 WHERE id = 1 AND auto_download_enabled = 0")
 
             # 创建会话表
             cursor.execute("""
