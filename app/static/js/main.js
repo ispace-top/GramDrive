@@ -239,10 +239,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleFiles(files) {
         console.log('DEBUG: handleFiles called with files:', files);
         if (progressArea) {
-            progressArea.innerHTML = ''; 
-            progressArea.classList.remove('hidden'); // Show prog-zone when uploads start
+            progressArea.innerHTML = '';
+            progressArea.style.display = 'flex'; // Show prog-zone when uploads start
         }
-        
+
         for (const file of files) {
             uploadQueue.push(file);
         }
@@ -252,11 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function processQueue() {
         if (isUploading || uploadQueue.length === 0) {
             if (uploadQueue.length === 0 && !isUploading && progressArea) {
-                progressArea.classList.add('hidden'); // Hide prog-zone if queue is empty and no upload is in progress
+                progressArea.style.display = 'none'; // Hide prog-zone if queue is empty
             }
             return;
         }
-        
+
         isUploading = true;
         const file = uploadQueue.shift();
         uploadFile(file).then(() => {
@@ -630,42 +630,61 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!filePreviewModal) return;
 
         resetPreviewModal();
-        filePreviewModal.style.display = 'flex'; // Use flex to center modal-content
-        if (previewLoading) previewLoading.style.display = 'flex'; // Show loading
+        filePreviewModal.style.display = 'flex';
+
+        // Always show loading first
+        if (previewLoading) {
+            previewLoading.style.display = 'flex';
+        }
 
         let supported = false;
 
         if (fileType.startsWith('image/')) {
             if (previewImage) {
+                previewImage.onload = () => {
+                    if (previewLoading) previewLoading.style.display = 'none';
+                };
+                previewImage.onerror = () => {
+                    if (previewLoading) previewLoading.style.display = 'none';
+                    if (previewUnsupported) previewUnsupported.style.display = 'block';
+                };
                 previewImage.src = fileUrl;
                 previewImage.style.display = 'block';
-                previewImage.onload = () => { if (previewLoading) previewLoading.style.display = 'none'; };
-                previewImage.onerror = () => { if (previewLoading) previewLoading.style.display = 'none'; };
             }
             supported = true;
         } else if (fileType.startsWith('video/') || fileType.startsWith('audio/')) {
             if (previewVideo) {
+                previewVideo.onloadeddata = () => {
+                    if (previewLoading) previewLoading.style.display = 'none';
+                };
+                previewVideo.onerror = () => {
+                    if (previewLoading) previewLoading.style.display = 'none';
+                    if (previewUnsupported) previewUnsupported.style.display = 'block';
+                };
                 previewVideo.src = fileUrl;
                 previewVideo.style.display = 'block';
-                previewVideo.load(); // Load video to show poster/metadata
+                previewVideo.load();
                 previewVideo.play();
-                previewVideo.onloadeddata = () => { if (previewLoading) previewLoading.style.display = 'none'; };
-                previewVideo.onerror = () => { if (previewLoading) previewLoading.style.display = 'none'; };
             }
             supported = true;
         } else if (fileType === 'application/pdf' || fileType.startsWith('text/')) {
             if (previewIframe) {
+                previewIframe.onload = () => {
+                    if (previewLoading) previewLoading.style.display = 'none';
+                };
+                previewIframe.onerror = () => {
+                    if (previewLoading) previewLoading.style.display = 'none';
+                    if (previewUnsupported) previewUnsupported.style.display = 'block';
+                };
                 previewIframe.src = fileUrl;
                 previewIframe.style.display = 'block';
-                previewIframe.onload = () => { if (previewLoading) previewLoading.style.display = 'none'; };
-                previewIframe.onerror = () => { if (previewLoading) previewLoading.style.display = 'none'; }; // Also hide on error for iframe
             }
             supported = true;
         }
 
         if (!supported) {
             if (previewUnsupported) previewUnsupported.style.display = 'block';
-            if (previewLoading) previewLoading.style.display = 'none'; // Hide loading if unsupported
+            if (previewLoading) previewLoading.style.display = 'none';
         }
     }
 

@@ -25,20 +25,12 @@
         <a href="/settings" class="btn btn-primary">前往设置</a>
     </div>
     {% else %}
-    <!-- Upload Area -->
-    <label class="card" style="border-style: dashed; text-align: center; padding: 40px; cursor: pointer; transition: all 0.2s; display: block;"
-         id="upload-zone" for="file-picker">
-        <input type="file" id="file-picker" multiple hidden>
-        <div style="color: var(--primary-color); margin-bottom: 12px;">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-        </div>
-        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">上传文件</h3>
-        <p style="color: var(--text-secondary); font-size: 14px;">拖拽文件到此处或点击选择</p>
-    </div>
-    
+    <!-- Hidden file input -->
+    <input type="file" id="file-picker" multiple hidden>
+
     <!-- Progress Area -->
-    <div id="prog-zone" style="display: flex; flex-direction: column; gap: 12px;"></div>
-    <div id="done-zone" style="display: flex; flex-direction: column; gap: 12px;"></div>
+    <div id="prog-zone" style="display: none; flex-direction: column; gap: 12px;"></div>
+    <div id="done-zone" style="display: none; flex-direction: column; gap: 12px;"></div>
 
     <!-- Batch Actions -->
     <div class="flex-between hidden" id="batch-actions-bar" style="background: var(--bg-surface-hover); padding: 12px 16px; border-radius: var(--radius-md);">
@@ -49,8 +41,8 @@
         </div>
     </div>
 
-    <!-- Category Tabs -->
-    <div style="margin-bottom: 20px; border-bottom: 2px solid var(--border-color);">
+    <!-- Category Tabs with Upload Button -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--border-color);">
         <div style="display: flex; gap: 0;">
             <button class="category-tab active" data-category="">
                 全部
@@ -71,6 +63,14 @@
                 其他
             </button>
         </div>
+        <button id="upload-button" class="btn btn-primary" style="height: 36px; margin-bottom: -2px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            上传文件
+        </button>
     </div>
     <style>
     .category-tab {
@@ -184,7 +184,13 @@
     <div class="modal-content" style="max-width: 90vw; max-height: 90vh; overflow: hidden; background: transparent; box-shadow: none;">
         <span class="close-button" style="color: white; opacity: 0.8; font-size: 2rem; position: absolute; top: 10px; right: 20px; z-index: 1000;">&times;</span>
         <div class="modal-body" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-            <img id="preview-image" src="" alt="File Preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+            <!-- Loading Indicator -->
+            <div id="preview-loading" style="display: none; position: absolute; z-index: 999; color: white; text-align: center;">
+                <div style="width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px;"></div>
+                <p style="font-size: 14px; opacity: 0.8;">加载中...</p>
+            </div>
+
+            <img id="preview-image" src="" alt="File Preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
             <video id="preview-video" src="" controls style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;"></video>
             <iframe id="preview-iframe" src="" frameborder="0" style="width: 100%; height: 100%; display: none;"></iframe>
             <div id="preview-unsupported" style="color: white; text-align: center; display: none;">
@@ -222,6 +228,10 @@
 
 .close-button {
     cursor: pointer;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 </style>
 {% endblock %}
