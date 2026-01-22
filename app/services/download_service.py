@@ -103,7 +103,7 @@ class DownloadService:
                 continue
 
             # Check file type
-            file_category = database._get_file_category_from_mime(file_info.get('mime_type'))
+            file_category = database._get_file_category_from_mime(file_info.get('mime_type'), file_info.get('filename'))
             if 'all' not in settings['file_types'] and file_category not in settings['file_types']:
                 logger.debug(f"【下载服务】文件类型不匹配，跳过。文件名: {file_info['filename']}，类型: {file_category}（允许: {','.join(settings['file_types'])}）")
                 continue
@@ -153,7 +153,7 @@ class DownloadService:
                     current_time = datetime.datetime.now()
                     date_str = current_time.strftime("%Y-%m-%d")  # YYYY-MM-DD
 
-                    file_category = database._get_file_category_from_mime(file_info.get('mime_type'))
+                    file_category = database._get_file_category_from_mime(file_info.get('mime_type'), file_info.get('filename'))
                     target_dir = os.path.join(settings['download_dir'], file_category, date_str)
                     os.makedirs(target_dir, exist_ok=True)
 

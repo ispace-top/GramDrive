@@ -190,21 +190,42 @@ def init_db() -> None:
             conn.close()
 
 # Helper function to map mime types to categories
-def _get_file_category_from_mime(mime_type: Optional[str]) -> str:
-    if not mime_type:
-        return "other"
-    if mime_type.startswith("image/"):
-        return "image"
-    if mime_type.startswith("video/"):
-        return "video"
-    if mime_type.startswith("audio/"):
-        return "audio"
-    if mime_type in ["application/pdf", "application/msword", 
-                    "application/vnd.ms-excel", "application/vnd.ms-powerpoint",
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    "application/vnd.openxmlformats-officedocument.presentationml.presentation"]:
-        return "document"
+def _get_file_category_from_mime(mime_type: Optional[str], filename: Optional[str] = None) -> str:
+    """
+    根据 mime_type 或文件名推断文件类型。
+    如果 mime_type 为空，尝试从文件扩展名推断。
+    """
+    # 先尝试从 mime_type 推断
+    if mime_type:
+        if mime_type.startswith("image/"):
+            return "image"
+        if mime_type.startswith("video/"):
+            return "video"
+        if mime_type.startswith("audio/"):
+            return "audio"
+        if mime_type in ["application/pdf", "application/msword",
+                        "application/vnd.ms-excel", "application/vnd.ms-powerpoint",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "application/vnd.openxmlformats-officedocument.presentationml.presentation"]:
+            return "document"
+
+    # 如果 mime_type 为空或无法识别，尝试从文件扩展名推断
+    if filename:
+        filename_lower = filename.lower()
+        # 图片扩展名
+        if any(filename_lower.endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico']):
+            return "image"
+        # 视频扩展名
+        if any(filename_lower.endswith(ext) for ext in ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.3gp', '.3g2']):
+            return "video"
+        # 音频扩展名
+        if any(filename_lower.endswith(ext) for ext in ['.mp3', '.wav', '.aac', '.flac', '.ogg', '.wma', '.m4a', '.opus']):
+            return "audio"
+        # 文档扩展名
+        if any(filename_lower.endswith(ext) for ext in ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']):
+            return "document"
+
     return "other"
 
 
