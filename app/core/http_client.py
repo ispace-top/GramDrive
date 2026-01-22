@@ -41,7 +41,7 @@ async def _start_bot(app: FastAPI, app_settings: dict) -> None:
         await bot_app.initialize()
         await bot_app.bot.delete_webhook() # Explicitly delete webhook
         await bot_app.start()
-        await bot_app.updater.start_polling(drop_pending_updates=True, clean=True) # Add clean=True
+        await bot_app.updater.start_polling(drop_pending_updates=True) # Remove clean=True
         logger.info("机器人已在后台启动并开始轮询。")
         app.state.bot_error = None
         app.state.bot_ready = True
@@ -99,7 +99,7 @@ async def lifespan(app: FastAPI):
 
     # 2. 创建共享的 httpx.AsyncClient
     global http_client
-    limits = httpx.Limits(max_connections=200, max_keepalive_connections=50)
+    limits = httpx.Limits(max_connections=500, max_keepalive_connections=100)  # 增加连接池大小
     http_client = httpx.AsyncClient(timeout=300.0, limits=limits)
     logger.info("共享的 HTTP 客户端已创建")
 

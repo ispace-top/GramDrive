@@ -36,8 +36,11 @@ async def get_thumbnail(
 
     # 检查是否为图片类型
     mime_type = file_meta.get("mime_type", "")
-    if not mime_type.startswith("image/"):
-        raise http_error(400, "仅支持图片类型文件", code="not_image")
+    if not mime_type or not mime_type.startswith("image/"):
+        # 如果没有mime_type或不是图片，则认为是图片（兜底）
+        # 因为Telegram的photo类型可能没有mime_type
+        logger.warning(f"文件 {file_id} mime_type={mime_type}，假定为图片类型")
+        # 不再抛出错误，直接尝试生成缩略图
 
     # 获取服务
     thumbnail_service = get_thumbnail_service()

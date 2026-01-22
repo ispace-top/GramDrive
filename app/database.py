@@ -459,7 +459,7 @@ def reset_app_settings_in_db() -> None:
             "PASS_WORD": None,
             "PICGO_API_KEY": None,
             "BASE_URL": None,
-            "AUTO_DOWNLOAD_ENABLED": False,
+            "AUTO_DOWNLOAD_ENABLED": True,  # 默认启用自动下载
             "DOWNLOAD_DIR": "/app/downloads",
             "DOWNLOAD_FILE_TYPES": "image,video",
             "DOWNLOAD_MAX_SIZE": 52428800,
