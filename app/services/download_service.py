@@ -199,15 +199,31 @@ class DownloadService:
                         actual_file_size = os.path.getsize(local_filepath)
                         if actual_file_size != total_size:
                             logger.warning(f"【下载服务】文件大小不匹配，跳过标记已下载。文件名: {filename}，预期: {total_size} bytes，实际: {actual_file_size} bytes")
+                            await progress_event_queue.put({
+                                "task_id": task_id, "file_id": file_id, "filename": filename,
+                                "status": "error", "error": "文件大小不匹配"
+                            })
                         else:
                             relative_local_path = os.path.relpath(local_filepath, start=settings['download_dir'])
                             result = database.update_local_path(file_id, relative_local_path)
                             if result:
                                 logger.info(f"【下载服务】文件下载完成。文件名: {filename}，路径: {relative_local_path}")
+                                await progress_event_queue.put({
+                                    "task_id": task_id, "file_id": file_id, "filename": filename,
+                                    "status": "completed"
+                                })
                             else:
                                 logger.error(f"【下载服务】数据库更新失败。文件名: {filename}，file_id: {file_id}")
+                                await progress_event_queue.put({
+                                    "task_id": task_id, "file_id": file_id, "filename": filename,
+                                    "status": "error", "error": "数据库更新失败"
+                                })
                     else:
                         logger.error(f"【下载服务】文件下载失败或文件不存在。文件名: {filename}，路径: {local_filepath}")
+                        await progress_event_queue.put({
+                            "task_id": task_id, "file_id": file_id, "filename": filename,
+                            "status": "error", "error": "文件下载失败或不存在"
+                        })
 
                 except Exception as e:
                     logger.error("Failed to download %s (ID: %s): %s", filename, file_id, e)
