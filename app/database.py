@@ -1,4 +1,3 @@
-import logging
 import os
 import sqlite3
 import threading
@@ -7,11 +6,13 @@ import random
 from datetime import datetime, timedelta
 from typing import Optional
 
+from .core.logging_config import get_logger, log_database
+
 DATA_DIR = os.getenv("DATA_DIR", "app/data")
 os.makedirs(DATA_DIR, exist_ok=True)
 DATABASE_URL = os.path.join(DATA_DIR, "file_metadata.db")
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # 使用线程锁来确保多线程环境下的数据库访问安全
 db_lock = threading.Lock()
@@ -284,7 +285,7 @@ def add_file_metadata(filename: str, file_id: str, filesize: int, mime_type: str
             cursor = conn.cursor()
 
             # 尝试生成唯一的 short_id
-            for _ in range(5):
+            for attempt in range(5):
                 short_id = generate_short_id()
                 try:
                     cursor.execute(
@@ -292,25 +293,30 @@ def add_file_metadata(filename: str, file_id: str, filesize: int, mime_type: str
                         (filename, file_id, filesize, short_id, mime_type)
                     )
                     conn.commit()
-                    logger.info("已添加文件元数据: %s, short_id: %s", filename, short_id)
+                    logger.info(f"【数据库】文件元数据已添加。文件名: {filename}，short_id: {short_id}，文件大小: {filesize} bytes")
                     return short_id
                 except sqlite3.IntegrityError as e:
                     if "short_id" in str(e):
+                        logger.debug(f"【数据库】short_id 冲突，重试 (尝试 {attempt + 1}/5)。生成的ID: {short_id}")
                         continue # 冲突重试
                     # 可能是 file_id 冲突，如果是这样，查询现有的 short_id
                     cursor.execute("SELECT short_id FROM files WHERE file_id = ?", (file_id,))
                     row = cursor.fetchone()
                     if row and row[0]:
+                        logger.info(f"【数据库】文件已存在，返回现有的 short_id: {row[0]}")
                         return row[0]
                     # 如果有记录但没 short_id (旧数据)，更新它
                     if row:
                         short_id = generate_short_id()
                         cursor.execute("UPDATE files SET short_id = ? WHERE file_id = ?", (short_id, file_id))
                         conn.commit()
+                        logger.info(f"【数据库】为旧记录补充 short_id。文件名: {filename}，short_id: {short_id}")
                         return short_id
+                    logger.error(f"【数据库】file_id 冲突但记录不存在。file_id: {file_id}")
                     raise e
 
             # 如果多次重试失败（极低概率），抛错
+            logger.error(f"【数据库】生成唯一 short_id 失败，已重试 5 次。文件名: {filename}")
             raise Exception("Failed to generate unique short_id")
 
         finally:
@@ -322,11 +328,11 @@ def get_file_by_id(identifier: str) -> dict | None:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
-            logger.info(f"DB: get_file_by_id - Searching for identifier: {identifier}")
+            logger.debug(f"【数据库】查询文件。标识符: {identifier}")
             cursor.execute("SELECT filename, filesize, upload_date, file_id, short_id FROM files WHERE short_id = ? OR file_id = ?", (identifier, identifier))
             result = cursor.fetchone()
             if result:
-                logger.info(f"DB: get_file_by_id - Found: {result['filename']} (file_id: {result['file_id']}, short_id: {result['short_id']})")
+                logger.debug(f"【数据库】文件查询成功。文件名: {result['filename']}，file_id: {result['file_id'][:20]}...，short_id: {result['short_id']}")
                 return {
                     "filename": result["filename"],
                     "filesize": result["filesize"],
@@ -334,7 +340,7 @@ def get_file_by_id(identifier: str) -> dict | None:
                     "file_id": result["file_id"],
                     "short_id": result["short_id"]
                 }
-            logger.warning(f"DB: get_file_by_id - Not found for identifier: {identifier}")
+            logger.debug(f"【数据库】文件未找到。标识符: {identifier}")
             return None
         finally:
             conn.close()
@@ -348,10 +354,20 @@ def delete_file_metadata(file_id: str) -> bool:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
+            # 先查询文件信息用于日志
+            cursor.execute("SELECT filename FROM files WHERE file_id = ?", (file_id,))
+            file_row = cursor.fetchone()
+            filename = file_row['filename'] if file_row else 'unknown'
+
             cursor.execute("DELETE FROM files WHERE file_id = ?", (file_id,))
             conn.commit()
             # cursor.rowcount 会返回受影响的行数
-            return cursor.rowcount > 0
+            deleted = cursor.rowcount > 0
+            if deleted:
+                logger.info(f"【数据库】文件元数据已删除。文件名: {filename}，file_id: {file_id[:20]}...")
+            else:
+                logger.warning(f"【数据库】文件元数据删除失败（未找到）。file_id: {file_id[:20]}...")
+            return deleted
         finally:
             conn.close()
 
@@ -452,6 +468,7 @@ def save_app_settings_to_db(payload: dict) -> None:
 
 def reset_app_settings_in_db() -> None:
     """重置应用设置（清空配置）。"""
+    logger.info("【数据库】开始重置应用设置")
     save_app_settings_to_db(
         {
             "BOT_TOKEN": None,
@@ -466,6 +483,7 @@ def reset_app_settings_in_db() -> None:
             "DOWNLOAD_MIN_SIZE": 0,
         }
     )
+    logger.info("【数据库】应用设置已重置")
 
 # ==================== 会话管理 ====================
 
@@ -487,7 +505,7 @@ def create_session(session_id: str, expires_in_hours: int = 24) -> None:
                 (session_id, expires_at.isoformat())
             )
             conn.commit()
-            logger.info("已创建会话: %s, 过期时间: %s", session_id, expires_at)
+            logger.info(f"【数据库】会话已创建。会话ID: {session_id[:8]}...，过期时间: {expires_at}")
         finally:
             conn.close()
 
@@ -511,6 +529,7 @@ def get_session(session_id: str) -> dict | None:
             )
             row = cursor.fetchone()
             if not row:
+                logger.debug(f"【数据库】会话未找到。会话ID: {session_id[:8]}...")
                 return None
 
             # 检查会话是否过期
@@ -519,9 +538,10 @@ def get_session(session_id: str) -> dict | None:
                 # 会话已过期，删除它
                 cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
                 conn.commit()
-                logger.info("会话已过期并被删除: %s", session_id)
+                logger.info(f"【数据库】会话已过期并被删除。会话ID: {session_id[:8]}...")
                 return None
 
+            logger.debug(f"【数据库】会话有效。会话ID: {session_id[:8]}...，过期时间: {row['expires_at']}")
             return {
                 "session_id": row["session_id"],
                 "created_at": row["created_at"],
