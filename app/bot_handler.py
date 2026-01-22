@@ -63,41 +63,59 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         file_obj = message.document
         file_name = file_obj.file_name
         mime_type = file_obj.mime_type
+        logger.debug(f"【Bot】检测到文档。文件名: {file_name}，mime_type: {mime_type}")
     elif message.photo:
         # 选择分辨率最高的照片
         file_obj = message.photo[-1]
         # 为照片创建一个默认文件名
         file_name = f"photo_{message.message_id}.jpg"
         mime_type = "image/jpeg" # PhotoSize object does not have mime_type, so we hardcode it
+        logger.debug(f"【Bot】检测到照片。文件名: {file_name}")
     elif message.video:
         file_obj = message.video
         file_name = file_obj.file_name or f"video_{message.message_id}.mp4"
         mime_type = file_obj.mime_type
+        logger.debug(f"【Bot】检测到视频。文件名: {file_name}，mime_type: {mime_type}，大小: {file_obj.file_size} bytes")
+    elif message.audio:
+        file_obj = message.audio
+        file_name = file_obj.file_name or f"audio_{message.message_id}.mp3"
+        mime_type = file_obj.mime_type
+        logger.debug(f"【Bot】检测到音频。文件名: {file_name}，mime_type: {mime_type}")
+    else:
+        logger.debug(f"【Bot】消息不包含支持的媒体类型。消息ID: {message.message_id}")
 
     # 4. 如果成功获取到文件或照片对象，则处理它
     if file_obj and file_name:
-        if file_obj.file_size < (20 * 1024 * 1024) and not file_name.endswith(".manifest"):
-            # 使用复合ID "message_id:file_id"
-            composite_id = f"{message.message_id}:{file_obj.file_id}"
-            logger.info(f"【Bot】处理新文件。文件名: {file_name}，大小: {file_obj.file_size / 1024 / 1024:.2f}MB，消息ID: {message.message_id}")
+        if file_name.endswith(".manifest"):
+            logger.debug(f"【Bot】跳过清单文件。文件名: {file_name}")
+            return
 
-            short_id = database.add_file_metadata(
-                filename=file_name,
-                file_id=composite_id,
-                filesize=file_obj.file_size,
-                mime_type=mime_type
-            )
+        file_size_mb = file_obj.file_size / 1024 / 1024
+        if file_obj.file_size >= (20 * 1024 * 1024):
+            logger.warning(f"【Bot】文件过大，跳过处理。文件名: {file_name}，大小: {file_size_mb:.2f}MB（限制: 20MB）")
+            return
 
-            upload_date = message.date.astimezone(timezone.utc).isoformat()
-            file_event = build_file_event(
-                action="add",
-                file_id=composite_id,
-                filename=file_name,
-                filesize=file_obj.file_size,
-                upload_date=upload_date,
-                short_id=short_id,
-            )
-            await file_update_queue.put(json.dumps(file_event))
+        # 使用复合ID "message_id:file_id"
+        composite_id = f"{message.message_id}:{file_obj.file_id}"
+        logger.info(f"【Bot】处理新文件。文件名: {file_name}，大小: {file_size_mb:.2f}MB，mime_type: {mime_type}，消息ID: {message.message_id}")
+
+        short_id = database.add_file_metadata(
+            filename=file_name,
+            file_id=composite_id,
+            filesize=file_obj.file_size,
+            mime_type=mime_type
+        )
+
+        upload_date = message.date.astimezone(timezone.utc).isoformat()
+        file_event = build_file_event(
+            action="add",
+            file_id=composite_id,
+            filename=file_name,
+            filesize=file_obj.file_size,
+            upload_date=upload_date,
+            short_id=short_id,
+        )
+        await file_update_queue.put(json.dumps(file_event))
 
 async def handle_get_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """

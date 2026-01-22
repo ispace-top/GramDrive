@@ -81,35 +81,41 @@ class DownloadService:
         }
 
     async def _fetch_and_queue_files_for_download(self, settings: Dict[str, Any]):
-        logger.debug("Fetching files to check for downloads...")
+        logger.info("【下载服务】正在获取待下载文件...")
         # For simplicity, we assume get_all_files returns all files and we filter here.
         # In a real scenario, you might want to query Telegram for new files.
-        all_files = database.get_all_files() 
-        
+        all_files = database.get_all_files()
+
         # Filter files that are not yet local and match criteria
         files_to_download = []
         for file_info in all_files:
             # Check if already downloaded
             if file_info.get('local_path'):
+                logger.debug(f"【下载服务】文件已下载，跳过。文件名: {file_info['filename']}")
                 continue
-            
+
             # Check file size
             if file_info['filesize'] > settings['max_size'] or file_info['filesize'] < settings['min_size']:
+                size_mb = file_info['filesize'] / 1024 / 1024
+                max_mb = settings['max_size'] / 1024 / 1024
+                min_mb = settings['min_size'] / 1024 / 1024
+                logger.debug(f"【下载服务】文件大小不符合要求，跳过。文件名: {file_info['filename']}，大小: {size_mb:.2f}MB（范围: {min_mb:.2f}-{max_mb:.2f}MB）")
                 continue
-            
+
             # Check file type
             file_category = database._get_file_category_from_mime(file_info.get('mime_type'))
             if 'all' not in settings['file_types'] and file_category not in settings['file_types']:
+                logger.debug(f"【下载服务】文件类型不匹配，跳过。文件名: {file_info['filename']}，类型: {file_category}（允许: {','.join(settings['file_types'])}）")
                 continue
-            
+
             # Add to queue if not already there
             if file_info['file_id'] not in [qf['file_id'] for qf in list(self.download_queue._queue)]:
                 files_to_download.append(file_info)
-        
+
         for file_info in files_to_download:
             await self.download_queue.put(file_info)
-        
-        logger.debug("Queued %d files for download.", len(files_to_download))
+
+        logger.info(f"【下载服务】已排队 {len(files_to_download)} 个文件待下载")
 
 
     async def _process_download_queue(self, settings: Dict[str, Any]):
