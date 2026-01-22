@@ -440,33 +440,11 @@ docker-compose restart gramdrive
 | Disk | Variable | Depends on stored files |
 | Network | Stable internet | For Telegram connectivity |
 
-## 🗺️ Roadmap
-
-**v2.0.0** (Current)
-- ✅ File management with preview
-- ✅ Image hosting mode
-- ✅ Auto-download with organization
-- ✅ Thumbnail caching
-- ✅ Connection pooling optimization
-- ✅ Bot conflict resolution
-
-**v2.1.0** (Planned)
-- 📌 WebDAV protocol support
-- 📌 Direct Telegram channel integration
-- 📌 Advanced search with filters
-- 📌 File sharing with expiration
-- 📌 Multi-channel support
-
-**v2.2.0** (Future)
-- 📌 S3-compatible API
-- 📌 FTP server interface
-- 📌 Mobile app (PWA)
-- 📌 Video transcoding on upload
-- 📌 Comments and annotations
-
 ## 🎉 Acknowledgments
 
-This project stands on the shoulders of giants. Special thanks to:
+This project is a second development based on **[buyi06/tgstate-python](https://github.com/buyi06/tgstate-python)**. Special thanks to the original author for the excellent code foundation.
+
+We also greatly appreciate the following open source projects and technologies:
 
 - **[FastAPI](https://fastapi.tiangolo.com/)** - Modern, fast web framework
 - **[python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)** - Telegram Bot API wrapper

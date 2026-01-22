@@ -440,33 +440,11 @@ docker-compose restart gramdrive
 | 磁盘 | 可变 | 取决于存储文件数量 |
 | 网络 | 稳定网络 | 用于 Telegram 连接 |
 
-## 🗺️ 开发路线图
-
-**v2.0.0**（当前版本）
-- ✅ 文件管理和预览
-- ✅ 图床模式
-- ✅ 自动下载和组织
-- ✅ 缩略图缓存
-- ✅ 连接池优化
-- ✅ Bot 冲突处理
-
-**v2.1.0**（计划中）
-- 📌 WebDAV 协议支持
-- 📌 直接 Telegram 频道集成
-- 📌 高级搜索和过滤
-- 📌 有过期时间的文件分享
-- 📌 多频道支持
-
-**v2.2.0**（未来版本）
-- 📌 S3 兼容 API
-- 📌 FTP 服务器接口
-- 📌 移动端应用（PWA）
-- 📌 上传时视频转码
-- 📌 评论和注释功能
-
 ## 🎉 致谢
 
-本项目站在巨人的肩膀上。特别感谢：
+本项目基于 **[buyi06/tgstate-python](https://github.com/buyi06/tgstate-python)** 二次开发，感谢原作者的优秀代码基础。
+
+同时特别感谢以下开源项目和技术：
 
 - **[FastAPI](https://fastapi.tiangolo.com/)** - 现代、快速的 Web 框架
 - **[python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)** - Telegram Bot API 包装器
