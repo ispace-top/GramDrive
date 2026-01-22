@@ -4,7 +4,6 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse, JSONResponse
-from starlette.middleware.proxy_fix import ProxyFixMiddleware
 
 # 导入我们的新生命周期管理器和路由
 from .core.http_client import lifespan
@@ -29,14 +28,20 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# 添加 ProxyFixMiddleware - 这必须是第一个中间件，用于正确处理反向代理的请求
-# 这个中间件会读取 X-Forwarded-* 头信息并修复请求对象中的 scheme、client、host 等
-app.add_middleware(
-    ProxyFixMiddleware,
-    trusted_hosts=["*"],  # 在生产环境中建议限制具体的主机
-)
-
 COOKIE_NAME = "tgstate_session"
+
+@app.middleware("http")
+async def proxy_headers_middleware(request: Request, call_next):
+    """
+    处理反向代理的 X-Forwarded-* 头信息。
+    这确保在 HTTPS 反向代理后面时，应用仍然能正确识别 HTTPS 协议。
+    """
+    # 读取 X-Forwarded-* 头信息
+    if request.headers.get("x-forwarded-proto") == "https":
+        # 修改 request 的 scope，将 scheme 改为 https
+        request.scope["scheme"] = "https"
+
+    return await call_next(request)
 
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
