@@ -87,7 +87,7 @@ async def get_download_config():
         }
         return {"status": "success", "data": config_data}
     except Exception as e:
-        logger.error("Error fetching download config: %s", e)
+        logger.error("获取下载配置出错: %s", e)
         raise http_error(500, "无法加载下载配置。") from e
 
 
@@ -110,7 +110,7 @@ async def save_download_config(payload: SaveConfigPayload):
 
         return {"status": "success", "message": "配置已保存。"}
     except Exception as e:
-        logger.error("Error saving download config: %s", e)
+        logger.error("保存下载配置出错: %s", e)
         raise http_error(500, "保存下载配置失败。") from e
 
 
@@ -132,7 +132,7 @@ async def get_local_stats():
         }
         return {"status": "success", "data": stats}
     except Exception as e:
-        logger.error("Error getting local file stats: %s", e)
+        logger.error("获取本地文件统计出错: %s", e)
         raise http_error(500, "无法获取本地文件统计。") from e
 
 
@@ -143,7 +143,7 @@ async def get_local_files_list():
         detailed_files = _get_local_file_details()
         return {"status": "success", "data": detailed_files}
     except Exception as e:
-        logger.error("Error getting local files list: %s", e)
+        logger.error("获取本地文件列表出错: %s", e)
         raise http_error(500, "无法获取本地文件列表。") from e
 
 
@@ -169,17 +169,17 @@ async def delete_local_file(payload: DeleteLocalFilePayload):
 
         return {"status": "success", "message": "本地文件记录已清除。"}
     except Exception as e:
-        logger.error("Error deleting local file: %s", e)
+        logger.error("删除本地文件出错: %s", e)
         raise http_error(500, "删除本地文件失败。") from e
 
 
 @router.get("/api/downloads/progress-stream")
 async def download_progress_stream(request: Request):
-    """SSE endpoint for streaming download progress."""
+    """用于流式传输下载进度的 SSE 端点。"""
     async def event_generator():
         while True:
             if await request.is_disconnected():
-                logger.info("Client disconnected from download progress stream.")
+                logger.info("客户端已从下载进度流断开连接。")
                 break
 
             try:
@@ -190,7 +190,7 @@ async def download_progress_stream(request: Request):
                 # Send a keep-alive comment every 30s to prevent connection timeout
                 yield ": keep-alive\n\n"
             except Exception as e:
-                logger.error("Error in download progress stream: %s", e, exc_info=True)
+                logger.error("下载进度流出错: %s", e, exc_info=True)
                 # Continue the loop
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

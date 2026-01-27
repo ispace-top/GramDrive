@@ -12,8 +12,8 @@ from ..services.telegram_service import TelegramService
 
 logger = get_logger(__name__)
 
-# Add a simple, in-memory queue for broadcasting events.
-# In a multi-worker setup, this would need to be replaced with something like Redis Pub/Sub.
+# 为广播事件添加一个简单的内存队列。
+# 在多工作进程设置中，这需要被替换为像 Redis Pub/Sub 这样的机制。
 progress_event_queue = asyncio.Queue()
 
 class DownloadService:
@@ -36,19 +36,19 @@ class DownloadService:
 
     async def stop(self):
         if not self.running:
-            logger.warning("DownloadService is not running.")
+            logger.warning("DownloadService 未运行。")
             return
-        logger.info("Stopping DownloadService...")
+        logger.info("正在停止 DownloadService...")
         self.running = False
         if self.download_task:
             self.download_task.cancel()
             try:
                 await self.download_task
             except asyncio.CancelledError:
-                logger.info("DownloadService task cancelled.")
+                logger.info("DownloadService 任务已取消。")
             except Exception as e:
-                logger.error("Error stopping DownloadService task: %s", e)
-        logger.info("DownloadService stopped.")
+                logger.error("停止 DownloadService 任务出错: %s", e)
+        logger.info("DownloadService 已停止。")
 
     async def _monitor_and_download(self):
         while self.running:
@@ -63,7 +63,7 @@ class DownloadService:
                 await self._process_download_queue(settings)
 
             except Exception as e:
-                logger.error("Error in DownloadService _monitor_and_download: %s", e)
+                logger.error("DownloadService _monitor_and_download 过程中出错: %s", e)
 
             await asyncio.sleep(settings.get('polling_interval', 60)) # Poll every minute by default
 
@@ -122,7 +122,7 @@ class DownloadService:
             logger.debug("Download queue is empty.")
             return
 
-        logger.info("Processing download queue with %d items...", self.download_queue.qsize())
+        logger.info("正在处理下载队列，共 %d 个项目...", self.download_queue.qsize())
 
         # Create a semaphore to limit concurrent downloads
         semaphore = asyncio.Semaphore(settings['threads'])
@@ -133,7 +133,7 @@ class DownloadService:
                 file_id = file_info['file_id']
                 filename = file_info['filename']
                 total_size = file_info.get('filesize', 0)
-                logger.info("Attempting to download %s (ID: %s)", filename, file_id)
+                logger.info("尝试下载 %s (ID: %s)", filename, file_id)
 
                 try:
                     # Announce start
@@ -145,7 +145,7 @@ class DownloadService:
                     actual_file_id = file_id.split(':', 1)[-1]
                     download_url = await self.telegram_service.get_download_url(actual_file_id)
                     if not download_url:
-                        raise Exception("Could not get download URL")
+                        raise Exception("无法获取下载 URL")
 
                     # 优化的目录结构：/download_dir/类型/日期/文件名
                     import datetime
@@ -209,7 +209,7 @@ class DownloadService:
                                 logger.info(f"【下载服务】文件下载完成。文件名: {filename}，路径: {relative_local_path}")
                                 await progress_event_queue.put({
                                     "task_id": task_id, "file_id": file_id, "filename": filename,
-                                    "status": "completed"
+                                    "status": "已完成"
                                 })
                             else:
                                 logger.error(f"【下载服务】数据库更新失败。文件名: {filename}，file_id: {file_id}")
@@ -225,7 +225,7 @@ class DownloadService:
                         })
 
                 except Exception as e:
-                    logger.error("Failed to download %s (ID: %s): %s", filename, file_id, e)
+                    logger.error("下载文件 %s (ID: %s) 失败: %s", filename, file_id, e)
                     await progress_event_queue.put({
                         "task_id": task_id, "file_id": file_id, "filename": filename,
                         "status": "error", "error": str(e)
@@ -237,7 +237,7 @@ class DownloadService:
             tasks.append(download_worker(file_info))
 
         await asyncio.gather(*tasks)
-        logger.info("Finished processing download queue.")
+        logger.info("下载队列处理完毕。")
 
 
 async def get_download_service(telegram_service: TelegramService = None, http_client: httpx.AsyncClient = None) -> DownloadService:

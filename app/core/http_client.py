@@ -61,7 +61,7 @@ async def _start_bot(app: FastAPI, app_settings: dict) -> None:
         app.state.bot_error = str(e)
         app.state.bot_app = None
         app.state.bot_ready = False
-        if "Conflict" in str(e):
+        if "冲突" in str(e):
             logger.warning("Bot 启动冲突！可能的原因：")
             logger.warning("1. 有多个应用实例在运行")
             logger.warning("2. 旧的Bot实例还没有完全关闭")

@@ -87,7 +87,7 @@ async def share_page(request: Request, file_id: str):
     """
     file_info = database.get_file_by_id(file_id)
     if not file_info:
-        return templates.TemplateResponse("error.html", {"request": request, "message": "File not found!"}, status_code=404)
+        return templates.TemplateResponse("error.html", {"request": request, "message": "文件未找到！"}, status_code=404)
 
     # 构建完整的文件URL
     cfg = get_app_settings()
@@ -101,7 +101,7 @@ async def share_page(request: Request, file_id: str):
         "filesize": file_info["filesize"],
         "upload_date": file_info["upload_date"],
         "file_url": file_url,
-        "html_code": f'<a href="{file_url}">Download {file_info["filename"]}</a>',
+        "html_code": f'<a href="{file_url}">下载 {file_info["filename"]}</a>',
         "markdown_code": f'[{file_info["filename"]}]({file_url})'
     }
     return templates.TemplateResponse("download.html", {"request": request, "file": file_data})

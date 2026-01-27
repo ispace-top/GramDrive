@@ -129,11 +129,11 @@ async def save_and_apply(payload: AppConfigRequest, request: Request):
         database.create_session(new_session_id)
 
         resp.set_cookie(key=COOKIE_NAME, value=new_session_id, httponly=True, samesite="Lax", path="/")
-        logger.info("Configuration saved and applied, new session created.")
+        logger.info("配置已保存并应用，新会话已创建。")
     else:
         # If password is removed, delete the session cookie
         resp.delete_cookie(COOKIE_NAME, path="/", httponly=True, samesite="Lax")
-        logger.info("Configuration saved and applied, session deleted (password removed).")
+        logger.info("配置已保存并应用，会话已删除（密码已移除）。")
 
     return resp
 

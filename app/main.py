@@ -37,7 +37,7 @@ async def request_logging_middleware(request: Request, call_next):
     记录并追踪 HTTP 请求
     """
     start_time = time.time()
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = request.client.host if request.client else "未知"
 
     # 记录请求
     log_request(logger, request.method, request.url.path, client_ip)

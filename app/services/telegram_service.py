@@ -18,7 +18,7 @@ CHUNK_SIZE_BYTES = int(19.5 * 1024 * 1024)
 
 logger = get_logger(__name__)
 
-# Add a simple in-memory cache for download URLs
+# 为下载 URL 添加一个简单的内存缓存
 _download_url_cache = {}
 _download_url_cache_ttl = 300 # 5 minutes TTL
 
@@ -257,17 +257,17 @@ class TelegramService:
                 chat_id=self.channel_name,
                 message_id=message_id
             )
-            return (True, "deleted")
+            return (True, "已删除")
         except telegram.error.BadRequest as e:
-            if "not found" in str(e).lower():
+            if "未找到" in str(e).lower():
                 logger.info("消息 %s 未找到，视为已删除", message_id)
                 return (True, "not_found")
             else:
                 logger.warning("删除消息 %s 失败 (BadRequest): %s", message_id, e)
-                return (False, "error")
+                return (False, "错误")
         except Exception as e:
             logger.error("删除消息 %s 时发生未知错误: %s", message_id, e)
-            return (False, "error")
+            return (False, "错误")
 
     async def delete_file_with_chunks(self, file_id: str) -> dict:
         """
@@ -296,14 +296,14 @@ class TelegramService:
             main_message_id = int(main_message_id_str)
         except (ValueError, IndexError):
             results["status"] = "error"
-            results["reason"] = "Invalid composite file_id format."
+            results["reason"] = "复合文件ID格式无效。"
             return results
 
         # 步骤 1: 检查文件是否为清单
         download_url = await self.get_download_url(main_actual_file_id)
         if not download_url:
             logger.warning("无法为文件 %s 获取下载链接，将只尝试删除主消息", main_actual_file_id)
-            results["reason"] = f"Could not get download URL for {main_actual_file_id}."
+            results["reason"] = f"无法获取 {main_actual_file_id} 的下载 URL。"
         else:
             try:
                 import httpx
@@ -368,9 +368,9 @@ class TelegramService:
         else:
              results["status"] = "partial_failure"
              if not results["main_message_deleted"]:
-                 results["reason"] += " Failed to delete main message."
+                 results["reason"] += " 删除主消息失败。"
              if results["failed_chunks"]:
-                 results["reason"] += f" Failed to delete {len(results['failed_chunks'])} chunks."
+                 results["reason"] += f" 删除 {len(results['failed_chunks'])} 个分块失败。"
 
 
         return results

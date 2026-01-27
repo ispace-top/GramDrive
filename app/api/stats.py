@@ -85,7 +85,7 @@ async def get_dashboard_stats(settings: Settings = Depends(get_settings)):
             "data": data_for_frontend
         }
     except Exception as e:
-        logger.error("Error processing dashboard statistics: %s", e, exc_info=True)
+        logger.error("处理仪表板统计数据出错: %s", e, exc_info=True)
         raise http_error(500, "无法加载或处理统计数据。", details=str(e)) from e
 
 

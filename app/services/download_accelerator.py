@@ -1,4 +1,4 @@
-"""Download accelerator for multi-threaded concurrent downloads."""
+"""多线程并发下载的下载加速器。"""
 
 import asyncio
 from collections.abc import AsyncGenerator
@@ -7,7 +7,7 @@ import httpx
 
 
 class DownloadAccelerator:
-    """Multi-threaded download accelerator using concurrent Range requests."""
+    """使用并发范围请求的多线程下载加速器。"""
 
     def __init__(self, http_client: httpx.AsyncClient, thread_count: int = 4):
         """Initialize the download accelerator.

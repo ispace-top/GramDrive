@@ -37,7 +37,7 @@ async def upload_file(
         submitted_key = authorization.split(" ", 1)[1]
 
     ensure_upload_auth(request, app_settings, submitted_key)
-    logger.info(f"【上传】开始上传文件。文件名: {file.filename}，大小: {file.size or 'unknown'} bytes")
+    logger.info(f"【上传】开始上传文件。文件名: {file.filename}，大小: {file.size or '未知'} 字节")
 
     temp_file_path = None
     try:

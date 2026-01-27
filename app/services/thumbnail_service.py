@@ -20,9 +20,9 @@ class ThumbnailService:
 
         # 缩略图尺寸配置
         self.sizes = {
-            "small": (150, 150),
-            "medium": (300, 300),
-            "large": (600, 600),
+            "小": (150, 150),
+            "中": (300, 300),
+            "大": (600, 600),
         }
 
     def _get_cache_path(self, file_id: str, size: str = "medium") -> Path:
@@ -58,7 +58,7 @@ class ThumbnailService:
         # 检查尺寸是否有效
         if size not in self.sizes:
             logger.warning(f"无效的缩略图尺寸: {size}，使用默认值 'medium'")
-            size = "medium"
+            size = "中"
 
         target_size = self.sizes[size]
         cache_path = self._get_cache_path(file_id, size)

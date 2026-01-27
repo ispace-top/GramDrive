@@ -51,38 +51,38 @@ def init_db() -> None:
             columns = [info[1] for info in cursor.fetchall()]
 
             if "short_id" not in columns:
-                logger.info("Migrating database: adding short_id column...")
+                logger.info("数据库迁移: 正在添加 short_id 列...")
                 try:
                     cursor.execute("ALTER TABLE files ADD COLUMN short_id TEXT")
                 except Exception as e:
-                    logger.error("Migration warning: Failed to add short_id column: %s", e)
+                    logger.error("迁移警告：添加 short_id 列失败: %s", e)
 
             if "local_path" not in columns:
-                logger.info("Migrating database: adding local_path column...")
+                logger.info("数据库迁移: 正在添加 local_path 列...")
                 try:
                     cursor.execute("ALTER TABLE files ADD COLUMN local_path TEXT")
                 except Exception as e:
-                    logger.error("Migration warning: Failed to add local_path column: %s", e)
+                    logger.error("迁移警告：添加 local_path 列失败: %s", e)
 
             if "download_count" not in columns:
-                logger.info("Migrating database: adding download_count column...")
+                logger.info("数据库迁移: 正在添加 download_count 列...")
                 try:
                     cursor.execute("ALTER TABLE files ADD COLUMN download_count INTEGER DEFAULT 0")
                 except Exception as e:
-                    logger.error("Migration warning: Failed to add download_count column: %s", e)
+                    logger.error("迁移警告：添加 download_count 列失败: %s", e)
 
             if "mime_type" not in columns:
-                logger.info("Migrating database: adding mime_type column...")
+                logger.info("数据库迁移: 正在添加 mime_type 列...")
                 try:
                     cursor.execute("ALTER TABLE files ADD COLUMN mime_type TEXT")
                 except Exception as e:
-                    logger.error("Migration warning: Failed to add mime_type column: %s", e)
+                    logger.error("迁移警告：添加 mime_type 列失败: %s", e)
 
             # 确保唯一索引存在
             try:
                 cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_files_short_id ON files(short_id)")
             except Exception as e:
-                logger.error("Migration warning: Failed to create index idx_files_short_id: %s", e)
+                logger.error("迁移警告：创建索引 idx_files_short_id 失败: %s", e)
 
             # 创建文件标签表
             cursor.execute("""
@@ -101,7 +101,7 @@ def init_db() -> None:
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_file_tags_tag ON file_tags(tag)")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_file_tags_file_id ON file_tags(file_id)")
             except Exception as e:
-                logger.error("Failed to create tag indexes: %s", e)
+                logger.error("创建标签索引失败: %s", e)
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS app_settings (
@@ -124,48 +124,48 @@ def init_db() -> None:
             settings_columns = [info[1] for info in cursor.fetchall()]
 
             if "auto_download_enabled" not in settings_columns:
-                logger.info("Adding auto_download_enabled to app_settings...")
+                logger.info("正在将 auto_download_enabled 添加到 app_settings...")
                 try:
                     cursor.execute("ALTER TABLE app_settings ADD COLUMN auto_download_enabled INTEGER DEFAULT 1")
                     # 更新现有记录为启用状态
                     cursor.execute("UPDATE app_settings SET auto_download_enabled = 1 WHERE auto_download_enabled IS NULL")
                 except Exception as e:
-                    logger.error("Failed to add auto_download_enabled: %s", e)
+                    logger.error("添加 auto_download_enabled 失败: %s", e)
 
             if "download_dir" not in settings_columns:
-                logger.info("Adding download_dir to app_settings...")
+                logger.info("正在将 download_dir 添加到 app_settings...")
                 try:
                     cursor.execute("ALTER TABLE app_settings ADD COLUMN download_dir TEXT DEFAULT '/app/downloads'")
                 except Exception as e:
-                    logger.error("Failed to add download_dir: %s", e)
+                    logger.error("添加 download_dir 失败: %s", e)
 
             if "download_file_types" not in settings_columns:
-                logger.info("Adding download_file_types to app_settings...")
+                logger.info("正在将 download_file_types 添加到 app_settings...")
                 try:
                     cursor.execute("ALTER TABLE app_settings ADD COLUMN download_file_types TEXT DEFAULT 'image,video'")
                 except Exception as e:
-                    logger.error("Failed to add download_file_types: %s", e)
+                    logger.error("添加 download_file_types 失败: %s", e)
 
             if "download_max_size" not in settings_columns:
-                logger.info("Adding download_max_size to app_settings...")
+                logger.info("正在将 download_max_size 添加到 app_settings...")
                 try:
                     cursor.execute("ALTER TABLE app_settings ADD COLUMN download_max_size INTEGER DEFAULT 52428800")
                 except Exception as e:
-                    logger.error("Failed to add download_max_size: %s", e)
+                    logger.error("添加 download_max_size 失败: %s", e)
 
             if "download_min_size" not in settings_columns:
-                logger.info("Adding download_min_size to app_settings...")
+                logger.info("正在将 download_min_size 添加到 app_settings...")
                 try:
                     cursor.execute("ALTER TABLE app_settings ADD COLUMN download_min_size INTEGER DEFAULT 0")
                 except Exception as e:
-                    logger.error("Failed to add download_min_size: %s", e)
+                    logger.error("添加 download_min_size 失败: %s", e)
 
             if "download_threads" not in settings_columns:
-                logger.info("Adding download_threads to app_settings...")
+                logger.info("正在将 download_threads 添加到 app_settings...")
                 try:
                     cursor.execute("ALTER TABLE app_settings ADD COLUMN download_threads INTEGER DEFAULT 4")
                 except Exception as e:
-                    logger.error("Failed to add download_threads: %s", e)
+                    logger.error("添加 download_threads 失败: %s", e)
 
             # 确保存在单行设置记录，并默认启用自动下载
             cursor.execute("INSERT OR IGNORE INTO app_settings (id, auto_download_enabled) VALUES (1, 1)")
@@ -185,14 +185,14 @@ def init_db() -> None:
             try:
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
             except Exception as e:
-                logger.error("Failed to create index idx_sessions_expires_at: %s", e)
+                logger.error("创建索引 idx_sessions_expires_at 失败: %s", e)
 
             conn.commit()
             logger.info("数据库已成功初始化")
         finally:
             conn.close()
 
-# Helper function to map mime types to categories
+# 辅助函数，用于将 mime 类型映射到分类
 def _get_file_category_from_mime(mime_type: str | None, filename: str | None = None) -> str:
     """
     根据 mime_type 或文件名推断文件类型。
@@ -201,35 +201,35 @@ def _get_file_category_from_mime(mime_type: str | None, filename: str | None = N
     # 先尝试从 mime_type 推断
     if mime_type:
         if mime_type.startswith("image/"):
-            return "image"
+            return "图片"
         if mime_type.startswith("video/"):
-            return "video"
+            return "视频"
         if mime_type.startswith("audio/"):
-            return "audio"
+            return "音频"
         if mime_type in ["application/pdf", "application/msword",
                         "application/vnd.ms-excel", "application/vnd.ms-powerpoint",
                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         "application/vnd.openxmlformats-officedocument.presentationml.presentation"]:
-            return "document"
+            return "文档"
 
     # 如果 mime_type 为空或无法识别，尝试从文件扩展名推断
     if filename:
         filename_lower = filename.lower()
         # 图片扩展名
         if any(filename_lower.endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico']):
-            return "image"
+            return "图片"
         # 视频扩展名
         if any(filename_lower.endswith(ext) for ext in ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.3gp', '.3g2']):
-            return "video"
+            return "视频"
         # 音频扩展名
         if any(filename_lower.endswith(ext) for ext in ['.mp3', '.wav', '.aac', '.flac', '.ogg', '.wma', '.m4a', '.opus']):
-            return "audio"
+            return "音频"
         # 文档扩展名
         if any(filename_lower.endswith(ext) for ext in ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']):
-            return "document"
+            return "文档"
 
-    return "other"
+    return "其他"
 
 
 def get_all_files(category: str | None = None, sort_by: str | None = None, sort_order: str | None = None) -> list[dict]:
@@ -246,15 +246,15 @@ def get_all_files(category: str | None = None, sort_by: str | None = None, sort_
 
             where_clauses = []
             if category:
-                if category == "image":
+                if category == "图片":
                     where_clauses.append("mime_type LIKE 'image/%'")
-                elif category == "video":
+                elif category == "视频":
                     where_clauses.append("mime_type LIKE 'video/%'")
-                elif category == "audio":
+                elif category == "音频":
                     where_clauses.append("mime_type LIKE 'audio/%'")
-                elif category == "document":
+                elif category == "文档":
                     where_clauses.append("mime_type IN ('application/pdf', 'application/msword', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')")
-                elif category == "other":
+                elif category == "其他":
                     # For 'other', filter out known types that have specific categories
                     known_mime_types = [
                         "image/%", "video/%", "audio/%", "application/pdf", "application/msword",
