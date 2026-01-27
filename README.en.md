@@ -1,166 +1,487 @@
-# Gram Drive: Your Personal Telegram Cloud Storage
+<div align="center">
+  <img src="app/static/images/logo_word.png" alt="Gram Drive Logo" width="400"/>
 
-[![Build Status](https://github.com/ispace-top/tgstate-python/actions/workflows/docker-image.yml/badge.svg)](https://github.com/ispace-top/tgstate-python/actions/workflows/docker-image.yml)
-[![Python Version](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://www.python.org/)
-[![Framework](https://img.shields.io/badge/Framework-FastAPI-green?logo=fastapi)](https://fastapi.tiangolo.com/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker Pulls](https://img.shields.io/docker/pulls/wapedkj/gramdrive?logo=docker)](https://hub.docker.com/r/wapedkj/gramdrive)
+  <p>
+    <strong>Turn Telegram into Your Private Cloud Storage</strong>
+  </p>
 
-[中文版本](README.md)
+  <p>
+    <a href="https://github.com/ispace-top/GramDrive/releases"><img src="https://img.shields.io/github/v/release/ispace-top/GramDrive?color=blue" alt="Version"></a>
+    <a href="#"><img src="https://img.shields.io/badge/python-3.11+-green.svg" alt="Python"></a>
+    <a href="https://hub.docker.com/r/wapedkj/gramdrive"><img src="https://img.shields.io/docker/pulls/wapedkj/gramdrive" alt="Docker Pulls"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/ispace-top/GramDrive" alt="License"></a>
+    <a href="#"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg" alt="Platform"></a>
+  </p>
 
-**Transform your Telegram account into a private, feature-rich, and everlasting cloud storage and media center.**
-
-Gram Drive leverages Telegram's unlimited storage, providing a sleek web interface to manage your files, create shareable links, and even serve as a powerful image host for services like PicGo. All your data is securely stored in a private channel or group of your choice.
+  <p>
+    <a href="README.md">中文</a> • English
+  </p>
+</div>
 
 ---
 
-<!-- We recommend adding a screenshot or GIF of the web interface here! -->
-<!-- ![Gram Drive Screenshot](https://your-image-host.com/gramdrive_screenshot.png) -->
+## 📖 Project Introduction
+
+**Gram Drive** is a modern web-based file management system that leverages Telegram as an unlimited cloud storage. Built on FastAPI and optimized for performance, it provides an intuitive interface to manage, preview, and share files stored in your Telegram channel.
 
 ## ✨ Key Features
 
--   **Limitless Storage**: Your storage capacity is only limited by Telegram itself.
--   **Modern Web Interface**: Clean, responsive, and intuitive UI with both light and dark modes.
--   **File Management**: Upload, download, delete, and search your files with ease. Supports batch operations.
--   **Drag & Drop Uploads**: Simply drag files into the browser for a seamless upload experience. Large files are automatically chunked.
--   **Short URL Sharing**: Generate clean, short links (e.g., `/d/AbC123`) for easy sharing.
--   **Image Hosting Mode**: A dedicated gallery view for your images. Copy links in URL, Markdown, or HTML formats, fully compatible with PicGo.
--   **Statistics Dashboard**: A comprehensive dashboard to visualize your storage usage, file type distribution, download counts, and more.
--   **Downloads Manager**: Configure auto-downloading of files from your channel to local server storage, and manage these local files directly from the UI.
--   **Advanced File Serving**：
-    -   **Streaming Support**: Full `Range` request support for streaming audio and video files. Seek and scrub through your media without waiting.
-    -   **Smart Content-Disposition**: Automatically previews viewable files (images, PDFs, videos) in-browser and triggers downloads for others.
-    -   **Force Download**: Option to force download any file by adding `?download=1` to the URL.
--   **Secure & Private**:
-    -   Your files are stored in your own private channel/group.
-    -   The web interface is protected by a password of your choice.
-    -   Supports API Key authentication for programmatic uploads (e.g., PicGo).
--   **Real-time Updates**: The file list updates in real-time as new files are uploaded or deleted, thanks to Server-Sent Events (SSE).
--   **Easy Deployment**: Deploy instantly with Docker or run directly from source.
+### 🗂️ **File Management**
+- **Multi-format Support**: Images, videos, audio, documents, etc.
+- **Smart Categorization**: Files are automatically categorized by type (Images/Videos/Audio/Documents/Others).
+- **Advanced Search**: Quickly find and filter files.
+- **Batch Operations**: Multi-select, batch delete, batch copy links.
+- **File Preview**: Supports image, video, PDF, and text file previews with loading states.
 
-## 🛠️ Technology Stack
+### 🖼️ **Image Hosting Mode**
+- **Thumbnail Generation**: Automatically generates thumbnails in 3 sizes (150x150, 300x300, 600x600).
+- **Smart Caching**: Server-side caching for 80% faster loading.
+- **Multiple Formats**: Supports copying URL, Markdown, or HTML links.
+- **Grid View**: Beautiful responsive grid layout with hover effects.
 
-| Component         | Technology            |
-| :---------------- | :-------------------- |
-| **Backend Framework** | FastAPI               |
-| **Telegram Bot Lib**  | `python-telegram-bot` |
-| **Async HTTP Client** | `httpx`               |
-| **Database**      | SQLite                |
-| **Web Server**    | Uvicorn               |
-| **Real-time Events**  | `sse-starlette`       |
-| **Configuration** | `pydantic-settings`   |
-| **Linting & Formatting** | Ruff                  |
-| **Containerization** | Docker                |
+### ⬇️ **Smart Download Management**
+- **Automatic Downloads**: Automatically sync files from Telegram.
+- **Organized Storage**: Files are saved by type and date (`/downloads/image/2026-01-22/photo.jpg`).
+- **Configurable Filters**: File type, file size, download location.
+- **Real-time Progress**: Online download status and progress tracking.
+- **Queue Management**: Supports concurrent downloads with configurable thread count.
 
-## 🚀 Getting Started
+### 🎨 **Modern UI/UX**
+- **Dark Mode**: Automatic detection and manual switching.
+- **Responsive Design**: Adapts to desktop, tablet, and mobile devices.
+- **Compact Upload**: Space-saving upload button design.
+- **Loading States**: Smooth loading animations and visual feedback.
 
-You can deploy Gram Drive using Docker (recommended for production) or run it directly from the source code (for development).
+### 🔒 **Security & Performance**
+- **Password Protection**: Secure login system.
+- **Session Management**: Automatic logout after extended inactivity.
+- **Connection Pool**: High-performance HTTP client (500 concurrent connections).
+- **Conflict Resolution**: Smart Telegram Bot conflict handling.
 
-### 1. Docker Deployment (Recommended)
+### 📊 **Statistics Dashboard**
+- **Storage Analysis**: Total files, storage usage, file type distribution.
+- **Upload Trends**: Daily/weekly upload charts.
+- **Category Statistics**: Visualized file category statistics.
 
-This is the easiest and most reliable way to get started.
+## 🚀 Quick Start
 
+### Prerequisites
+
+- **Docker & Docker Compose** (Recommended) or **Python 3.11+**
+- **Telegram Bot Token** ([Create via @BotFather](https://t.me/BotFather))
+- **Telegram Channel** (Create a private channel for file storage)
+
+### 🐳 Docker Deployment (Recommended)
+
+#### Quick Start (Using Pre-built Image)
+
+The simplest way, no local build required:
+
+1. **Create Directory Structure**
+   ```bash
+   mkdir -p ../GramDrive/data ../GramDrive/downloads
+   cd ../GramDrive
+   ```
+
+2. **Create `docker-compose.yml` file**
+   ```yaml
+   version: '3.8'
+   services:
+     gramdrive:
+       image: wapedkj/gramdrive:latest
+       container_name: gramdrive
+       restart: unless-stopped
+       ports:
+         - "8000:8000"
+       volumes:
+         - ./data:/app/data
+         - ./downloads:/app/downloads
+       environment:
+         - PYTHONUNBUFFERED=1
+         - BOT_TOKEN=${BOT_TOKEN:-}
+         - CHANNEL_NAME=${CHANNEL_NAME:-}
+         - PASS_WORD=${PASS_WORD:-}
+         - PICGO_API_KEY=${PICGO_API_KEY:-}
+         - BASE_URL=localhost
+       env_file:
+         - .env
+       healthcheck:
+         test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+         interval: 30s
+         timeout: 10s
+         retries: 3
+         start_period: 40s
+   ```
+
+3. **Create `.env` file** (Optional)
+   ```bash
+   cat > .env << EOF
+   BOT_TOKEN=your_bot_token_here
+   CHANNEL_NAME=@your_channel_name
+   PASS_WORD=your_admin_password
+   PICGO_API_KEY=optional_api_key
+   BASE_URL=localhost
+   EOF
+   ```
+
+4. **Pull Image and Start Application**
+   ```bash
+   docker-compose pull
+   docker-compose up -d
+   ```
+
+5. **Access Web Interface**
+   ```
+   http://localhost:8000
+   ```
+
+6. **Initial Configuration**
+   - Open Web Interface
+   - Set Admin Password
+   - Configure Bot Token and Channel Name in Settings
+   - Click "Apply" to start the bot
+
+#### Source Code Deployment (Local Build)
+
+If you need to modify the source code or use the latest development version:
+
+1. **Clone Repository**
+   ```bash
+   git clone https://github.com/ispace-top/GramDrive.git
+   cd GramDrive
+   ```
+
+2. **Create Directory Structure**
+   ```bash
+   mkdir -p ../GramDrive/data ../GramDrive/downloads
+   ```
+
+3. **Create `.env` file** (Optional)
+   ```bash
+   cat > .env << EOF
+   BOT_TOKEN=your_bot_token_here
+   CHANNEL_NAME=@your_channel_name
+   PASS_WORD=your_admin_password
+   PICGO_API_KEY=optional_api_key
+   BASE_URL=localhost
+   EOF
+   ```
+
+4. **Build and Start Application**
+   ```bash
+   docker-compose up -d --build
+   ```
+
+5. **Access Web Interface**
+   ```
+   http://localhost:8000
+   ```
+
+6. **Initial Configuration**
+   - Open Web Interface
+   - Set Admin Password
+   - Configure Bot Token and Channel Name in Settings
+   - Click "Apply" to start the bot
+
+### 🔧 Manual Installation
+
+**Prerequisites:**
 ```bash
-# 1. Create a persistent volume for your data (database, etc.)
-docker volume create gramdrive_data
-
-# 2. Pull the latest image and run the container
-# Replace 8000 with any port you prefer on your host machine
-docker run -d \
-  --name gramdrive \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  -v gramdrive_data:/app/data \
-  wapedkj/gramdrive:latest
+python --version  # Requires 3.11+
+pip --version
 ```
 
-**Configuring `DOWNLOAD_DIR` for Automatic Downloads**
+**Installation Steps:**
 
-If you enable the automatic download feature in the "Downloads Manager" and want the downloaded files to be persistently stored on your host machine, you need to map the container's download path `/app/downloads` to a directory on your host. For example:
+1. **Clone and Setup**
+   ```bash
+   git clone https://github.com/ispace-top/GramDrive.git
+   cd GramDrive
+   python -m venv venv
+   source venv/bin/activate  # Linux/macOS
+   # venv\Scripts\activate   # Windows
+   ```
 
-```bash
-docker run -d \
-  --name gramdrive \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  -v gramdrive_data:/app/data \
-  -v /path/on/your/host:/app/downloads \# Add this line: maps container download dir to host
-  wapedkj/gramdrive:latest
+2. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configure Environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env file, fill in your Bot Token and Channel Name
+   ```
+
+4. **Create Data Directories**
+   ```bash
+   mkdir -p data downloads
+   ```
+
+5. **Run Application**
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+6. **Access Application**
+   ```
+   http://localhost:8000
+   ```
+
+## ⚙️ Configuration Guide
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `BOT_TOKEN` | ✅ Yes | - | Telegram Bot Token (from @BotFather) |
+| `CHANNEL_NAME` | ✅ Yes | - | Target Telegram Channel (@name or -1001234567890) |
+| `PASS_WORD` | ❌ No | - | Admin Password (leave empty for no authentication) |
+| `PICGO_API_KEY` | ❌ No | - | API Key for PicGo/Image Host integration |
+| `BASE_URL` | ❌ No | `localhost` | Base URL for generated share links |
+
+### Auto Download Configuration
+
+**In Web Settings:**
+
+| Setting | Default | Description |
+|---|---|---|
+| `AUTO_DOWNLOAD_ENABLED` | `True` | Enable automatic downloads |
+| `DOWNLOAD_DIR` | `/app/downloads` | Directory to save downloads |
+| `DOWNLOAD_FILE_TYPES` | `image,video` | Comma-separated file types |
+| `DOWNLOAD_MAX_SIZE` | `52428800` (50MB) | Maximum download file size (bytes) |
+| `DOWNLOAD_MIN_SIZE` | `0` | Minimum download file size (bytes) |
+| `DOWNLOAD_THREADS` | `3` | Concurrent downloads |
+| `DOWNLOAD_POLLING_INTERVAL` | `60` | Check interval (seconds) |
+
+**Directory Structure:**
+
+Automatically downloaded files are organized by type and date:
+```
+downloads/
+├── image/
+│   ├── 2026-01-22/
+│   │   ├── photo_001.jpg
+│   │   ├── photo_002.png
+│   │   └── screenshot.png
+│   └── 2026-01-21/
+│       └── vacation.jpg
+├── video/
+│   ├── 2026-01-22/
+│   │   └── meeting_recording.mp4
+│   └── 2026-01-20/
+│       └── tutorial.mkv
+└── document/
+    ├── 2026-01-22/
+    │   └── contract.pdf
+    └── 2026-01-15/
+        └── presentation.pptx
 ```
 
-*   Please replace `/path/on/your/host` with the absolute path on your host machine where you want to store downloaded files.
-*   **Important**: Ensure the `/path/on/your/host` directory exists and Docker has write permissions to it.
+## 📚 Usage Examples
 
+### 🌐 Web Interface
 
-After running the command, access the web interface at `http://<your_server_ip>:8000`.
+1. **File Management**
+   - Click to preview files (supports images, videos, PDFs)
+   - Multi-select for batch operations
+   - Copy file links in various formats (URL, Markdown, HTML)
+   - Automatic categorization by file type
 
-### 2. Local Development (From Source)
+2. **Image Hosting Mode**
+   - Dedicated interface for image sharing
+   - 3 thumbnail sizes (small/medium/large), server-side cached
+   - One-click copy to clipboard
+   - Share with friends using short links
 
-This method is suitable for developers who want to modify the code.
+3. **Download Management**
+   - Configure auto-download filters (file type, size)
+   - Real-time monitoring of download progress
+   - View downloaded files organized by type and date
 
+### 🔌 API Usage
+
+**Get File List**
 ```bash
-# 1. Clone the repository
-git clone https://github.com/ispace-top/tgstate-python.git
-cd tgstate-python
-
-# 2. Create and activate a virtual environment
-python -m venv venv
-# On Windows:
-# venv\Scripts\activate
-# On macOS/Linux
-source venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Configure your environment
-cp .env.example .env
-# Now, edit the .env file with your settings (see configuration below)
-
-# 5. Run the development server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+curl -X GET "http://localhost:8000/api/files" \
+  -H "Cookie: tgstate_session=your_session_id"
 ```
-The application will be available at `http://localhost:8000`.
 
-## ⚙️ Initial Configuration
+**Upload File**
+```bash
+curl -X POST "http://localhost:8000/api/upload" \
+  -F "file=@/path/to/file.jpg" \
+  -H "Cookie: tgstate_session=your_session_id"
+```
 
-After the first launch, you'll be prompted to set an admin password. Once logged in, navigate to **System Settings** to complete the setup.
+**Upload with PicGo**
+```bash
+curl -X POST "http://localhost:8000/api/upload" \
+  -F "file=@photo.jpg" \
+  -H "x-api-key: your_api_key"
+```
 
-#### Step 1: Get `BOT_TOKEN` from BotFather
+**Download File**
+```bash
+curl "http://localhost:8000/d/AbC123" -o downloaded_file.jpg
+```
 
-1.  Open Telegram and search for the official **[@BotFather](https://t.me/BotFather)**.
-2.  Start a chat and send the `/newbot` command.
-3.  Follow the prompts to set a name and a username for your bot (the username must end in `bot`).
-4.  BotFather will send you a message containing the token. Copy the string under `Use this token to access the HTTP API:`. This is your **`BOT_TOKEN`**.
+**Get Thumbnail**
+```bash
+# Available sizes: small (150x150), medium (300x300), large (600x600)
+curl "http://localhost:8000/api/thumbnail/file_id?size=medium" -o thumb.jpg
+```
 
-#### Step 2: Get `CHANNEL_NAME` (Chat ID)
+**Delete File**
+```bash
+curl -X DELETE "http://localhost:8000/api/files/file_id" \
+  -H "Cookie: tgstate_session=your_session_id"
+```
 
-1.  Create a new **private** channel or group in Telegram.
-2.  Add the bot you just created as an **administrator** in the channel/group.
-3.  Send any message (e.g., "hello") to your channel/group.
-4.  Forward that message to the bot **[@userinfobot](https://t.me/userinfobot)**.
-5.  It will reply with details, including the `From Chat` ID. Copy the ID, which is usually a number starting with `-100...`. This is your **`CHANNEL_NAME`**.
+### 🖼️ PicGo Configuration
 
-Now, enter these values in the System Settings page in the web UI.
+Add to PicGo Custom Uploader:
 
-## 🔧 Configuration Variables
+**PicGo Configuration (PicGo > Plugins > Piclist > Configuration):**
+```json
+{
+  "picBed": {
+    "custom": {
+      "show": true,
+      "name": "Gram Drive",
+      "url": "http://your-server:8000/d/$filename",
+      "body": [
+        {
+          "key": "file",
+          "type": "file",
+          "required": true
+        }
+      ],
+      "headers": [
+        {
+          "key": "x-api-key",
+          "value": "your_api_key"
+        }
+      ],
+      "customBody": "multipart/form-data",
+      "httpPlugin": "request"
+    }
+  }
+}
+```
 
-All settings can be configured via environment variables (in a `.env` file or Docker environment) or through the web UI after the first launch.
+## 🐛 Troubleshooting
 
-| Variable           | Description                                                        |
-| :----------------- | :----------------------------------------------------------------- |
-| `BOT_TOKEN`        | **Required.** Your Telegram bot token.                             |
-| `CHANNEL_NAME`     | **Required.** The ID of your private channel/group.                |
-| `PASS_WORD`        | The admin password for the web interface. If empty, no authentication is required. |
-| `BASE_URL`         | The public-facing URL of your instance (e.g., `https://tg.example.com`). Optional, but recommended for accuracy when sharing links from the bot. |
-| `PICGO_API_KEY`    | The API key for PicGo uploads. Set a secure, random string.        |
+### Bot Conflict Error
+**Error:** `Conflict: terminated by other getUpdates request`
 
-## 🙏 Acknowledgments & Fork Information
+**Cause:**
+- Multiple application instances running simultaneously
+- Old Bot instances not fully shut down
+- Running in both development and production environments concurrently
 
-This project is a fork of and has been significantly enhanced from the original **[ispace-top/tgstate-python](https://github.com/ispace-top/tgstate-python)** repository.
+**Solution:**
+```bash
+# Full restart
+docker-compose down
+sleep 10
+docker-compose up -d --build
 
-Our heartfelt thanks go to the original author for creating an excellent foundation. This fork aims to continue the development with new features, bug fixes, and a slightly different architectural direction.
+# Or manual restart
+pkill -f "uvicorn app"
+sleep 5
+uvicorn app.main:app --reload
+```
+
+### Download Service Not Working
+**Problem:** Automatic downloads fail to start files
+
+**Checklist:**
+- ✅ `AUTO_DOWNLOAD_ENABLED` is set to `True` in settings
+- ✅ `BOT_TOKEN` and `CHANNEL_NAME` are configured and applied
+- ✅ Bot shows "Ready" (green dot) in settings
+- ✅ Check logs: `docker logs gramdrive` for errors
+- ✅ Directory exists: `/app/downloads` (or configured `DOWNLOAD_DIR`)
+
+**Fix Method:**
+```bash
+# Check Bot status logs
+docker logs gramdrive | grep -i "bot\|download"
+
+# If Bot fails, restart with new configuration
+docker-compose restart gramdrive
+```
+
+### Thumbnail API Returns 400
+**Problem:** Image preview/thumbnails fail to load
+
+**Solution:**
+- The thumbnail service automatically detects missing `mime_type` and assumes an image type.
+- Check logs for warnings: `docker logs gramdrive | grep -i thumbnail`
+- Clear thumbnail cache: `curl -X POST http://localhost:8000/api/thumbnail/clear-all`
+
+### Connection Pool Timeout
+**Error:** `All connections in the connection pool are occupied`
+
+**Cause:** Too many concurrent image loads exhaust the connection pool.
+
+**Solution (Optimized):**
+- Connection pool increased to 500 maximum connections.
+- Thumbnails are server-side cached (no duplicate downloads).
+- Update to the latest version: `docker-compose up -d --build`
+
+## 📋 System Requirements
+
+| Component | Requirement | Notes |
+|---|---|---|
+| Python | 3.11+ | Required for manual installation |
+| Docker | Latest | Recommended for deployment |
+| Memory | 512MB | Minimum for light usage |
+| Disk | Variable | Depends on the number of stored files |
+| Network | Stable Network | For Telegram connection |
+
+## 🎉 Acknowledgments
+
+This project is a secondary development based on **[buyi06/tgstate-python](https://github.com/buyi06/tgstate-python)**. We sincerely thank the original author for their excellent code foundation.
+
+Special thanks also to the following open-source projects and technologies:
+
+- **[FastAPI](https://fastapi.tiangolo.com/)** - Modern, fast web framework
+- **[python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot)** - Telegram Bot API wrapper
+- **[Pillow](https://python-pillow.org/)** - Excellent image processing library
+- **[httpx](https://www.python-httpx.org/)** - Elegant asynchronous HTTP client
+- **[SQLite](https://www.sqlite.org/)** - Reliable embedded database
+- **[Uvicorn](https://www.uvicorn.org/)** - Blazingly fast ASGI server
+- **[Docker](https://www.docker.com/)** - Simplifies containerization
+- **[Telegram](https://telegram.org/)** - Build on a secure platform
 
 ## 📄 License
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
+
+## 🤝 Contribution Guide
+
+Contributions are welcome! Feel free to submit Pull Requests.
+
+1. Fork this repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 💬 Contact & Support
+
+- **Issue Feedback:** [GitHub Issues](https://github.com/ispace-top/GramDrive/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/ispace-top/GramDrive/discussions)
+- **Email:** your-email@example.com
+
+---
+
+<div align="center">
+  <p>
+    <strong>Made with ❤️ for Telegram enthusiasts</strong><br>
+    <a href="https://github.com/ispace-top/GramDrive">GitHub</a> •
+    <a href="https://github.com/ispace-top/GramDrive/issues">Issues</a> •
+    <a href="https://github.com/ispace-top/GramDrive/discussions">Discussions</a>
+  </p>
+</div>
