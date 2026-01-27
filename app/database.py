@@ -242,7 +242,7 @@ def get_all_files(category: Optional[str] = None, sort_by: Optional[str] = None,
         try:
             cursor = conn.cursor()
             
-            query = "SELECT filename, file_id, filesize, upload_date, short_id, mime_type FROM files"
+            query = "SELECT filename, file_id, filesize, upload_date, short_id, mime_type, local_path FROM files"
             params = []
             
             where_clauses = []
