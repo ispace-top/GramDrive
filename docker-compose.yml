@@ -10,26 +10,11 @@ services:
       - "8000:8000"
     volumes:
       # 持久化数据目录 - 修改为本地相对路径，更通用
-      - ../GramDrive/data:/app/data
-      -  ../GramDrive/downloads:/app/downloads
+      - ../GramDriveData/data:/app/data
+      -  ../GramDriveData/downloads:/app/downloads
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=Asia/Shanghai
-      # 可选：从 .env 文件读取环境变量
-      # 如果你不使用 .env 文件，可以直接在这里配置
-      - BOT_TOKEN=${BOT_TOKEN:-}
-      - CHANNEL_NAME=${CHANNEL_NAME:-}
-      - PASS_WORD=${PASS_WORD:-}
-      - PICGO_API_KEY=${PICGO_API_KEY:-}
-      - BASE_URL=localhost
-    env_file:
-      - .env
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     networks:
       - gramdrive-network
 
