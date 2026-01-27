@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
-from fastapi import HTTPException, Request
 from typing import Any
 
-from ..core.config import get_active_password
+from fastapi import HTTPException, Request
+
 from .. import database
+from ..core.config import get_active_password
 from .auth import COOKIE_NAME
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ def http_error(status_code: int, message: str, *, code: str = "error", details: 
 def ensure_upload_auth(request: Request, app_settings: dict, submitted_key: str | None) -> None:
     picgo_api_key = app_settings.get("PICGO_API_KEY")
     web_password_set = bool(app_settings.get("PASS_WORD") or get_active_password())
-    
+
     # 检查会话认证
     session_id = request.cookies.get(COOKIE_NAME)
     is_authenticated_via_session = session_id and database.get_session(session_id)
@@ -49,7 +50,7 @@ def ensure_upload_auth(request: Request, app_settings: dict, submitted_key: str 
     # 根据配置，抛出特定的错误
     if web_password_set: # 如果设置了网页密码，但未通过会话认证
         raise http_error(401, "需要网页登录", code="login_required")
-    
+
     if picgo_api_key: # 如果设置了 PicGo API Key，但未通过 API Key 认证
         raise http_error(401, "无效的 API 密钥", code="invalid_api_key")
 

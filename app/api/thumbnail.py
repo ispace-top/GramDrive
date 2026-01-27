@@ -1,9 +1,7 @@
 import logging
-from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, Query, Response
-from fastapi.responses import StreamingResponse
 
 from .. import database
 from ..core.http_client import get_http_client
@@ -60,8 +58,8 @@ async def get_thumbnail(
     # 缓存未命中，生成缩略图
     try:
         telegram_service = get_telegram_service()
-    except Exception:
-        raise http_error(503, "Telegram服务不可用", code="telegram_unavailable")
+    except Exception as e:
+        raise http_error(503, "Telegram服务不可用", code="telegram_unavailable") from e
 
     # 获取原图下载链接
     try:

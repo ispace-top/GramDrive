@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import logging
-import os
-from typing import List
 import asyncio
 import json
+import logging
+import os
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from .. import database
 from ..services.download_service import progress_event_queue
@@ -51,17 +50,17 @@ def _format_size(size_in_bytes: int) -> str:
         size_in_bytes /= 1024.0
     return f"{size_in_bytes:.2f} PB"
 
-def _get_local_file_details() -> List[dict]:
+def _get_local_file_details() -> list[dict]:
     """获取所有本地文件的详细信息，包括文件系统状态。"""
     db_files = database.get_local_files()
     download_dir = database.get_app_settings_from_db().get("DOWNLOAD_DIR", "/app/downloads")
-    
+
     detailed_files = []
     for file_rec in db_files:
         full_path = os.path.join(download_dir, file_rec["local_path"])
         exists = os.path.exists(full_path)
         actual_size = os.path.getsize(full_path) if exists else None
-        
+
         detailed_files.append({
             **file_rec,
             "full_path": full_path,
@@ -89,7 +88,7 @@ async def get_download_config():
         return {"status": "success", "data": config_data}
     except Exception as e:
         logger.error("Error fetching download config: %s", e)
-        raise http_error(500, "无法加载下载配置。")
+        raise http_error(500, "无法加载下载配置。") from e
 
 
 @router.post("/api/downloads/config", response_model=dict)
@@ -97,7 +96,7 @@ async def save_download_config(payload: SaveConfigPayload):
     """保存自动下载配置"""
     try:
         current_settings = database.get_app_settings_from_db()
-        
+
         update_data = {
             "AUTO_DOWNLOAD_ENABLED": payload.enabled,
             "DOWNLOAD_DIR": payload.download_dir,
@@ -106,13 +105,13 @@ async def save_download_config(payload: SaveConfigPayload):
             "DOWNLOAD_MIN_SIZE": payload.min_size,
         }
         current_settings.update(update_data)
-        
+
         database.save_app_settings_to_db(current_settings)
-        
+
         return {"status": "success", "message": "配置已保存。"}
     except Exception as e:
         logger.error("Error saving download config: %s", e)
-        raise http_error(500, "保存下载配置失败。")
+        raise http_error(500, "保存下载配置失败。") from e
 
 
 @router.get("/api/downloads/stats", response_model=dict)
@@ -120,10 +119,10 @@ async def get_local_stats():
     """获取本地存储统计信息"""
     try:
         local_files = _get_local_file_details()
-        
+
         total_size = sum(f["actual_size"] for f in local_files if f["exists"])
         exists_count = sum(1 for f in local_files if f["exists"])
-        
+
         stats = {
             "total_count": len(local_files),
             "total_size": total_size,
@@ -134,7 +133,7 @@ async def get_local_stats():
         return {"status": "success", "data": stats}
     except Exception as e:
         logger.error("Error getting local file stats: %s", e)
-        raise http_error(500, "无法获取本地文件统计。")
+        raise http_error(500, "无法获取本地文件统计。") from e
 
 
 @router.get("/api/downloads/local-files", response_model=dict)
@@ -145,7 +144,7 @@ async def get_local_files_list():
         return {"status": "success", "data": detailed_files}
     except Exception as e:
         logger.error("Error getting local files list: %s", e)
-        raise http_error(500, "无法获取本地文件列表。")
+        raise http_error(500, "无法获取本地文件列表。") from e
 
 
 @router.delete("/api/downloads/local-file", response_model=dict)
@@ -164,14 +163,14 @@ async def delete_local_file(payload: DeleteLocalFilePayload):
         if os.path.exists(full_path):
             os.remove(full_path)
             logger.info("已从本地删除文件: %s", full_path)
-        
+
         # 无论本地文件是否存在，都清空数据库记录
         database.clear_local_path(file_id)
 
         return {"status": "success", "message": "本地文件记录已清除。"}
     except Exception as e:
         logger.error("Error deleting local file: %s", e)
-        raise http_error(500, "删除本地文件失败。")
+        raise http_error(500, "删除本地文件失败。") from e
 
 
 @router.get("/api/downloads/progress-stream")
@@ -182,16 +181,16 @@ async def download_progress_stream(request: Request):
             if await request.is_disconnected():
                 logger.info("Client disconnected from download progress stream.")
                 break
-            
+
             try:
                 event = await asyncio.wait_for(progress_event_queue.get(), timeout=30)
                 yield f"data: {json.dumps(event)}\n\n"
                 progress_event_queue.task_done()
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Send a keep-alive comment every 30s to prevent connection timeout
                 yield ": keep-alive\n\n"
             except Exception as e:
                 logger.error("Error in download progress stream: %s", e, exc_info=True)
                 # Continue the loop
-    
+
     return StreamingResponse(event_generator(), media_type="text/event-stream")

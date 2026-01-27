@@ -6,7 +6,6 @@
 import logging
 import os
 import sys
-from datetime import datetime
 
 # 日志级别映射
 LOG_LEVEL_MAP = {

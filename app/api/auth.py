@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Response, Request
+import secrets
+
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
+from .. import database
 from ..core.config import get_active_password
 from ..core.logging_config import get_logger
-from .. import database
-import secrets
 
 logger = get_logger(__name__)
 

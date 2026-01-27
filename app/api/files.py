@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import asyncio
 import mimetypes
-from typing import List, Optional
 from urllib.parse import quote
 
 import httpx
@@ -16,7 +16,6 @@ from ..core.logging_config import get_logger
 from ..services.download_accelerator import DownloadAccelerator
 from ..services.telegram_service import TelegramService, get_telegram_service
 from .common import http_error
-
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -44,7 +43,7 @@ async def serve_file(
 
     # --- Header Preparation ---
     filename_encoded = quote(str(filename))
-    
+
     # 1. Content-Type
     content_type, _ = mimetypes.guess_type(filename)
     if not content_type:
@@ -71,9 +70,9 @@ async def serve_file(
         # Documents
         ".pdf"
     )
-    
+
     is_previewable = filename.lower().endswith(preview_extensions)
-    
+
     if force_download:
         disposition_type = "attachment"
     else:
@@ -88,7 +87,7 @@ async def serve_file(
 
     # --- Range Handling ---
     range_header = request.headers.get("Range")
-    
+
     # First, peek content to check if it's a manifest (TG split file)
     # We only read a small chunk to identify manifest
     try:
@@ -96,18 +95,18 @@ async def serve_file(
         # However, getting Content-Length for Range support is tricky with TG API if we don't know it.
         # DB has `filesize`, let's use it if possible, but serve_file signature relies on passing it or fetching.
         # Here we just fetch head.
-        
+
         # Optimization: We need to know if it's manifest.
         # Note: If it's a HEAD request from client, we still might need to fetch a bit from TG to know if it's manifest.
         # But if we just want to return headers for a simple file, maybe we can skip?
         # No, because if it's manifest, content-type and size are different (manifest is text, real file is binary).
         # So we MUST fetch head from TG even for HEAD request.
-        
+
         head_resp = await client.get(download_url, headers={"Range": "bytes=0-127"})
         head_resp.raise_for_status()
         first_bytes = head_resp.content
     except httpx.RequestError as e:
-        raise http_error(503, "无法连接到 Telegram 服务器。", code="tg_unreachable", details=str(e))
+        raise http_error(503, "无法连接到 Telegram 服务器。", code="tg_unreachable", details=str(e)) from e
 
     # Check for manifest (large file split)
     if first_bytes.startswith(b"tgstate-blob\n"):
@@ -119,23 +118,23 @@ async def serve_file(
         lines = manifest_content.decode("utf-8").strip().split("\n")
         if len(lines) < 3:
             raise http_error(500, "清单文件格式错误。", code="manifest_invalid")
-        # original_filename = lines[1] 
+        # original_filename = lines[1]
         chunk_file_ids = [cid for cid in lines[2:] if cid.strip()]
 
         # Force attachment for split files usually, but respect user preference if previewable (e.g. large video?)
         # For now, let's keep basic logic. Streaming split files with Range is hard.
         # We will serve it sequentially without Range support for now.
-        
+
         if request.method == "HEAD":
              return Response(status_code=200, headers=common_headers)
 
         return StreamingResponse(
-            stream_chunks(chunk_file_ids, telegram_service, client), 
+            stream_chunks(chunk_file_ids, telegram_service, client),
             headers=common_headers
         )
 
     # Standard Single File
-    
+
     # Get total size for Range
     async def get_remote_file_size():
         # Try HEAD
@@ -143,7 +142,7 @@ async def serve_file(
              h_resp = await client.head(download_url)
              if h_resp.headers.get("Content-Length"):
                  return int(h_resp.headers["Content-Length"])
-        except:
+        except Exception:
              pass
         return None
 
@@ -179,34 +178,35 @@ async def serve_file(
         # Parse Range: bytes=0-1024
         try:
             unit, ranges = range_header.split("=")
-            if unit != "bytes": raise ValueError
+            if unit != "bytes":
+                raise ValueError
             start_str, end_str = ranges.split("-")
             start = int(start_str)
             end = int(end_str) if end_str else file_size - 1
-            
+
             if start >= file_size:
                 return Response(status_code=416, headers={"Content-Range": f"bytes */{file_size}"})
-            
+
             # Correct end if out of bounds
             if end >= file_size:
                 end = file_size - 1
-                
+
             length = end - start + 1
-            
+
             common_headers.update({
                 "Content-Range": f"bytes {start}-{end}/{file_size}",
                 "Content-Length": str(length)
             })
-            
+
             # Stream partial content
             async def range_streamer():
                 async with client.stream("GET", download_url, headers={"Range": f"bytes={start}-{end}"}) as resp:
                     resp.raise_for_status()
                     async for chunk in resp.aiter_bytes():
                         yield chunk
-            
+
             return StreamingResponse(range_streamer(), status_code=206, headers=common_headers)
-            
+
         except (ValueError, Exception):
             # Fallback to full content if Range parsing fails
             pass
@@ -232,7 +232,7 @@ async def download_file_legacy(
     file_id: str,
     filename: str,
     request: Request,
-    download: Optional[str] = Query(None), # ?download=1
+    download: str | None = Query(None), # ?download=1
     client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """
@@ -240,8 +240,8 @@ async def download_file_legacy(
     """
     try:
         telegram_service = get_telegram_service()
-    except Exception:
-        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，下载不可用", code="cfg_missing")
+    except Exception as e:
+        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，下载不可用", code="cfg_missing") from e
 
     # 增加下载计数（仅GET请求）
     if request.method == "GET":
@@ -255,7 +255,7 @@ async def download_file_legacy(
 async def download_file_short(
     identifier: str,
     request: Request,
-    download: Optional[str] = Query(None), # ?download=1
+    download: str | None = Query(None), # ?download=1
     client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """
@@ -263,8 +263,8 @@ async def download_file_short(
     """
     try:
         telegram_service = get_telegram_service()
-    except Exception:
-        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，下载不可用", code="cfg_missing")
+    except Exception as e:
+        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，下载不可用", code="cfg_missing") from e
 
     # Lookup metadata
     meta = database.get_file_by_id(identifier)
@@ -281,9 +281,9 @@ async def download_file_short(
 
 @router.get("/api/files")
 async def get_files_list(
-    category: Optional[str] = Query(None),
-    sort_by: Optional[str] = Query(None, pattern="^(filename|filesize|upload_date)$"),
-    sort_order: Optional[str] = Query(None, pattern="^(asc|desc)$")
+    category: str | None = Query(None),
+    sort_by: str | None = Query(None, pattern="^(filename|filesize|upload_date)$"),
+    sort_order: str | None = Query(None, pattern="^(asc|desc)$")
 ):
     # Pass parameters to get_all_files
     return database.get_all_files(category=category, sort_by=sort_by, sort_order=sort_order)
@@ -295,9 +295,9 @@ async def delete_file(
 ):
     try:
         telegram_service = get_telegram_service()
-    except Exception:
+    except Exception as e:
         logger.error("【删除】配置缺失：无法初始化 Telegram 服务")
-        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，删除不可用", code="cfg_missing")
+        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，删除不可用", code="cfg_missing") from e
 
     logger.info(f"【删除】请求删除文件。文件ID: {file_id}")
     delete_result = await telegram_service.delete_file_with_chunks(file_id)
@@ -325,7 +325,7 @@ async def delete_file(
 
 
 class BatchDeleteRequest(BaseModel):
-    file_ids: List[str]
+    file_ids: list[str]
 
 
 @router.post("/api/batch_delete")
@@ -333,10 +333,10 @@ async def batch_delete_files(
     request_data: BatchDeleteRequest,
 ):
     try:
-        telegram_service = get_telegram_service()
-    except Exception:
+        get_telegram_service()
+    except Exception as e:
         logger.error("【批量删除】配置缺失：无法初始化 Telegram 服务")
-        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，批量删除不可用", code="cfg_missing")
+        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，批量删除不可用", code="cfg_missing") from e
 
     logger.info(f"【批量删除】开始批量删除。文件数: {len(request_data.file_ids)}")
 

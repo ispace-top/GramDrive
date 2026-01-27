@@ -1,4 +1,6 @@
 import asyncio
+import contextlib
+
 
 class BroadcastEventBus:
     def __init__(self, queue_maxsize: int = 200):
@@ -24,14 +26,10 @@ class BroadcastEventBus:
             try:
                 q.put_nowait(data)
             except asyncio.QueueFull:
-                try:
+                with contextlib.suppress(asyncio.QueueEmpty):
                     q.get_nowait()
-                except asyncio.QueueEmpty:
-                    pass
-                try:
+                with contextlib.suppress(asyncio.QueueFull):
                     q.put_nowait(data)
-                except asyncio.QueueFull:
-                    pass
 
     async def put(self, data: str) -> None:
         await self.publish(data)

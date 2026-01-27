@@ -1,21 +1,21 @@
-import logging
-import os
 import time
+
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse, JSONResponse
 
-# 导入日志配置
-from .core.logging_config import get_logger, log_request, log_response, setup_logging
+from . import database
+from .api import routes as api_routes
+from .api.common import error_payload
+from .core.config import get_app_settings
 
 # 导入我们的新生命周期管理器和路由
 from .core.http_client import lifespan
-from .api import routes as api_routes
+
+# 导入日志配置
+from .core.logging_config import get_logger, log_request, log_response, setup_logging
 from .pages import router as pages_router
-from .core.config import get_active_password, get_app_settings
-from .api.common import error_payload
-from . import database
 
 # 初始化日志配置
 setup_logging()

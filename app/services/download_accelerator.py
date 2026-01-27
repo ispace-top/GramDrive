@@ -1,7 +1,7 @@
 """Download accelerator for multi-threaded concurrent downloads."""
 
 import asyncio
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import httpx
 

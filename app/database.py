@@ -1,12 +1,11 @@
 import os
-import sqlite3
-import threading
-import string
 import random
+import sqlite3
+import string
+import threading
 from datetime import datetime, timedelta
-from typing import Optional
 
-from .core.logging_config import get_logger, log_database
+from .core.logging_config import get_logger
 
 DATA_DIR = os.getenv("DATA_DIR", "app/data")
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -153,7 +152,7 @@ def init_db() -> None:
                     cursor.execute("ALTER TABLE app_settings ADD COLUMN download_max_size INTEGER DEFAULT 52428800")
                 except Exception as e:
                     logger.error("Failed to add download_max_size: %s", e)
-            
+
             if "download_min_size" not in settings_columns:
                 logger.info("Adding download_min_size to app_settings...")
                 try:
@@ -194,7 +193,7 @@ def init_db() -> None:
             conn.close()
 
 # Helper function to map mime types to categories
-def _get_file_category_from_mime(mime_type: Optional[str], filename: Optional[str] = None) -> str:
+def _get_file_category_from_mime(mime_type: str | None, filename: str | None = None) -> str:
     """
     根据 mime_type 或文件名推断文件类型。
     如果 mime_type 为空，尝试从文件扩展名推断。
@@ -233,7 +232,7 @@ def _get_file_category_from_mime(mime_type: Optional[str], filename: Optional[st
     return "other"
 
 
-def get_all_files(category: Optional[str] = None, sort_by: Optional[str] = None, sort_order: Optional[str] = None) -> list[dict]:
+def get_all_files(category: str | None = None, sort_by: str | None = None, sort_order: str | None = None) -> list[dict]:
     """
     从数据库中获取所有文件的元数据，支持按类别、排序字段和排序顺序过滤。
     """
@@ -241,10 +240,10 @@ def get_all_files(category: Optional[str] = None, sort_by: Optional[str] = None,
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
-            
+
             query = "SELECT filename, file_id, filesize, upload_date, short_id, mime_type, local_path FROM files"
             params = []
-            
+
             where_clauses = []
             if category:
                 if category == "image":
@@ -273,7 +272,7 @@ def get_all_files(category: Optional[str] = None, sort_by: Optional[str] = None,
 
             if where_clauses:
                 query += " WHERE " + " AND ".join(where_clauses)
-            
+
             order_map = {
                 "filename": "filename",
                 "filesize": "filesize",

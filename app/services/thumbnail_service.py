@@ -1,12 +1,10 @@
-import os
-import logging
 import hashlib
-from pathlib import Path
-from typing import Optional, Tuple
+import logging
 from io import BytesIO
+from pathlib import Path
 
-from PIL import Image
 import httpx
+from PIL import Image
 
 from ..core.config import get_app_settings
 
@@ -33,7 +31,7 @@ class ThumbnailService:
         file_hash = hashlib.md5(file_id.encode()).hexdigest()
         return self.cache_dir / f"{file_hash}_{size}.jpg"
 
-    def get_cached_thumbnail(self, file_id: str, size: str = "medium") -> Optional[bytes]:
+    def get_cached_thumbnail(self, file_id: str, size: str = "medium") -> bytes | None:
         """获取已缓存的缩略图"""
         cache_path = self._get_cache_path(file_id, size)
 
@@ -53,8 +51,8 @@ class ThumbnailService:
         file_id: str,
         download_url: str,
         size: str = "medium",
-        client: Optional[httpx.AsyncClient] = None
-    ) -> Optional[bytes]:
+        client: httpx.AsyncClient | None = None
+    ) -> bytes | None:
         """生成并缓存缩略图"""
 
         # 检查尺寸是否有效
@@ -105,7 +103,7 @@ class ThumbnailService:
             logger.error(f"生成缩略图失败: {file_id}, {e}", exc_info=True)
             return None
 
-    def _create_thumbnail(self, image_data: bytes, size: Tuple[int, int]) -> Optional[bytes]:
+    def _create_thumbnail(self, image_data: bytes, size: tuple[int, int]) -> bytes | None:
         """使用PIL创建缩略图"""
         try:
             img = Image.open(BytesIO(image_data))
@@ -132,12 +130,12 @@ class ThumbnailService:
             logger.error(f"PIL处理图片失败: {e}", exc_info=True)
             return None
 
-    def clear_cache(self, file_id: Optional[str] = None):
+    def clear_cache(self, file_id: str | None = None):
         """清除缓存"""
         if file_id:
             # 清除特定文件的所有缩略图
             file_hash = hashlib.md5(file_id.encode()).hexdigest()
-            for size in self.sizes.keys():
+            for size in self.sizes:
                 cache_path = self.cache_dir / f"{file_hash}_{size}.jpg"
                 if cache_path.exists():
                     cache_path.unlink()
@@ -150,7 +148,7 @@ class ThumbnailService:
 
 
 # 单例实例
-_thumbnail_service: Optional[ThumbnailService] = None
+_thumbnail_service: ThumbnailService | None = None
 
 
 def get_thumbnail_service() -> ThumbnailService:

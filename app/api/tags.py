@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from ..core.config import Settings, get_settings
 from .. import database
+from ..core.config import Settings, get_settings
 from .common import http_error
 
 router = APIRouter()

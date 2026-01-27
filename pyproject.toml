@@ -48,7 +48,7 @@ ignore = [
 ]
 
 # 每行允许的注释数量
-max-comments-per-line = 10
+# max-comments-per-line = 10
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

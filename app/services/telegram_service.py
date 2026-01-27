@@ -1,16 +1,16 @@
 import asyncio
 import io
-import os
 import mimetypes
+import os
 import time
 from functools import lru_cache
 
 import telegram
 from telegram.request import HTTPXRequest
 
+from .. import database
 from ..core.config import get_app_settings
 from ..core.logging_config import get_logger
-from .. import database
 
 # Telegram Bot API 对通过 getFile 方法下载的文件有 20MB 的限制。
 # tgState 将文件按 19.5MB 分块上传，并通过 .manifest 文件记录原始文件名与分块列表。
@@ -87,7 +87,7 @@ class TelegramService:
                     # 关键变更：存储复合ID (message_id:file_id) 而不是只有 file_id
                     chunk_file_ids.append(f"{message.message_id}:{message.document.file_id}")
                     chunk_number += 1
-        except IOError as e:
+        except OSError as e:
             logger.error(f"【Telegram】读取文件时出错。文件名: {original_filename}，错误: {str(e)}", exc_info=e)
             return None
         except Exception as e:
@@ -312,7 +312,7 @@ class TelegramService:
                     if response.status_code == 200 and response.content.startswith(b'tgstate-blob\n'):
                         results["is_manifest"] = True
                         logger.info("文件 %s 是清单文件，开始删除分块", file_id)
-                        
+
                         manifest_content = response.content.decode('utf-8')
                         lines = manifest_content.strip().split('\n')
                         chunk_composite_ids = [cid for cid in lines[2:] if cid.strip()]
@@ -353,7 +353,7 @@ class TelegramService:
         main_message_deleted, delete_reason = await self.delete_message(main_message_id)
         results["main_message_deleted"] = main_message_deleted
         results["main_delete_reason"] = delete_reason
-        
+
         if main_message_deleted:
             if delete_reason == "deleted":
                 logger.info("主消息 %s 已成功删除", main_message_id)
@@ -386,12 +386,12 @@ class TelegramService:
         # Telegram API 限制 get_chat_history 一次最多返回 100 条
         # 我们需要循环获取，直到没有更多消息
         last_message_id = None
-        
+
         # 为了避免无限循环，我们设置一个最大迭代次数
         MAX_ITERATIONS = 100
-        
+
         logger.info("开始从频道获取历史消息")
-        
+
         for i in range(MAX_ITERATIONS):
             try:
                 # 获取一批消息
@@ -422,8 +422,9 @@ class TelegramService:
                     elif doc.file_name.endswith('.manifest'):
                         # 下载并解析清单文件以获取原始文件名和大小
                         manifest_url = await self.get_download_url(doc.file_id)
-                        if not manifest_url: continue
-                        
+                        if not manifest_url:
+                            continue
+
                         import httpx
                         async with httpx.AsyncClient() as client:
                             try:
@@ -439,7 +440,7 @@ class TelegramService:
                                     })
                             except httpx.RequestError:
                                 continue
-            
+
             # 设置下一次迭代的偏移量
             last_message_id = messages[-1].message_id
             logger.info("已处理批次 %s，最后的消息 ID: %s", i + 1, last_message_id)
@@ -447,7 +448,7 @@ class TelegramService:
         logger.info("文件列表获取完毕，共找到 %s 个有效文件", len(files))
         return files
 
-@lru_cache()
+@lru_cache
 def get_telegram_service() -> TelegramService:
     """
     TelegramService 的缓存工厂函数。

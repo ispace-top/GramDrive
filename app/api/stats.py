@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging
+
 from fastapi import APIRouter, Depends
 
-from ..core.config import Settings, get_settings
 from .. import database
+from ..core.config import Settings, get_settings
 from .common import http_error
 
 router = APIRouter()
@@ -85,7 +86,7 @@ async def get_dashboard_stats(settings: Settings = Depends(get_settings)):
         }
     except Exception as e:
         logger.error("Error processing dashboard statistics: %s", e, exc_info=True)
-        raise http_error(500, "无法加载或处理统计数据。", details=str(e))
+        raise http_error(500, "无法加载或处理统计数据。", details=str(e)) from e
 
 
 @router.get("/api/stats/local-files")

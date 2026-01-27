@@ -1,13 +1,14 @@
 import json
-from datetime import timezone, datetime
+from datetime import UTC
+from urllib.parse import quote
 
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
-from .core.logging_config import get_logger
-from .services.telegram_service import get_telegram_service
 from . import database
-from .events import file_update_queue, build_file_event
+from .core.logging_config import get_logger
+from .events import build_file_event, file_update_queue
+from .services.telegram_service import get_telegram_service
 
 logger = get_logger(__name__)
 
@@ -106,7 +107,7 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             mime_type=mime_type
         )
 
-        upload_date = message.date.astimezone(timezone.utc).isoformat()
+        upload_date = message.date.astimezone(UTC).isoformat()
         file_event = build_file_event(
             action="add",
             file_id=composite_id,
@@ -137,7 +138,7 @@ async def handle_get_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     file_id = document.file_id
     file_name = getattr(document, "file_name", f"photo_{replied_message.message_id}.jpg")
     settings = _get_bot_settings(context)
-    
+
     final_file_id = f"{replied_message.message_id}:{file_id}"
     final_file_name = file_name
 
@@ -151,7 +152,7 @@ async def handle_get_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         final_file_name = original_filename
 
     file_path = f"/d/{final_file_id}/{quote(final_file_name)}"
-    
+
     if settings.get("BASE_URL"):
         base_url = (settings.get("BASE_URL") or "http://127.0.0.1:8000").strip("/")
         download_link = f"{base_url}{file_path}"
@@ -185,7 +186,7 @@ def create_bot_app(settings: dict) -> Application:
     application.bot_data["settings"] = settings
 
     # --- 添加处理器 ---
-    
+
     # 1. 处理对文件消息回复 "get" 的情况 (在任何地方)
     get_handler = MessageHandler(
         filters.TEXT & (~filters.COMMAND) & filters.REPLY,
@@ -204,5 +205,5 @@ def create_bot_app(settings: dict) -> Application:
     # 注意：机器人需要有管理员权限才能接收到此事件
     delete_handler = MessageHandler(filters.UpdateType.EDITED_MESSAGE, handle_deleted_message)
     application.add_handler(delete_handler, group=1)
-    
+
     return application

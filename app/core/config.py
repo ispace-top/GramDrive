@@ -1,22 +1,22 @@
-import os
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings
-from typing import Optional
+
 
 class Settings(BaseSettings):
     """
     应用程序设置。
     """
-    BOT_TOKEN: Optional[str] = None
-    CHANNEL_NAME: Optional[str] = None
-    PASS_WORD: Optional[str] = None
-    PICGO_API_KEY: Optional[str] = None # [可选] PicGo 上传接口的 API 密钥
+    BOT_TOKEN: str | None = None
+    CHANNEL_NAME: str | None = None
+    PASS_WORD: str | None = None
+    PICGO_API_KEY: str | None = None # [可选] PicGo 上传接口的 API 密钥
     BASE_URL: str = "http://127.0.0.1:8000"
     MODE: str = "p" # p 代表公开模式, m 代表私有模式
     FILE_ROUTE: str = "/d/"
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """
     获取应用程序设置。
@@ -25,7 +25,7 @@ def get_settings() -> Settings:
     """
     return Settings()
 
-def get_active_password() -> Optional[str]:
+def get_active_password() -> str | None:
     """
     获取当前有效的密码。
     优先从数据库读取，如果为空则回退到环境变量。

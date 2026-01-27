@@ -1,15 +1,18 @@
-import logging
-import httpx
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
 import asyncio
+import logging
+from contextlib import asynccontextmanager
+
+import httpx
+from fastapi import FastAPI
 
 # 导入应用所需的其他模块
 from .. import database
 from ..bot_handler import create_bot_app
 from ..core.config import get_app_settings
-from ..services.download_service import DownloadService, get_download_service # New import
-from ..services.telegram_service import get_telegram_service # New import, needed for DownloadService
+from ..services.download_service import get_download_service  # New import
+from ..services.telegram_service import (
+    get_telegram_service,  # New import, needed for DownloadService
+)
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +103,7 @@ async def lifespan(app: FastAPI):
     """
     # --- 启动逻辑 ---
     logger.info("应用启动")
-    
+
     # 1. 初始化数据库
     database.init_db()
     logger.info("数据库已初始化")

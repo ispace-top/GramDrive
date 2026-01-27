@@ -1,35 +1,31 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import tempfile
-from typing import Optional
-from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, Header, UploadFile, Request
+from fastapi import APIRouter, Depends, File, Form, Header, Request, UploadFile
 
 from ..core.config import Settings, get_app_settings, get_settings
 from ..core.logging_config import get_logger
 from ..services.telegram_service import get_telegram_service
 from .common import ensure_upload_auth, http_error
 
-
 router = APIRouter()
 logger = get_logger(__name__)
 
 
-import re
-from .common import ensure_upload_auth, http_error
 
 @router.post("/api/upload")
 async def upload_file(
     request: Request,
     file: UploadFile = File(...),
-    key: Optional[str] = Form(None),
-    token: Optional[str] = Form(None),
+    key: str | None = Form(None),
+    token: str | None = Form(None),
     settings: Settings = Depends(get_settings),
-    x_api_key: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    x_api_key: str | None = Header(None),
+    authorization: str | None = Header(None),
 ):
     app_settings = get_app_settings()
     if not (app_settings.get("BOT_TOKEN") or "").strip() or not (app_settings.get("CHANNEL_NAME") or "").strip():
@@ -53,13 +49,11 @@ async def upload_file(
         file_id = await telegram_service.upload_file(temp_file_path, file.filename)
     except Exception as e:
         logger.error(f"【上传】上传失败。文件名: {file.filename}，错误: {str(e)}", exc_info=e)
-        raise http_error(500, "文件上传失败。", code="upload_failed", details=str(e))
+        raise http_error(500, "文件上传失败。", code="upload_failed", details=str(e)) from e
     finally:
         if temp_file_path and os.path.exists(temp_file_path):
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(temp_file_path)
-            except OSError:
-                pass
 
     if not file_id:
         logger.error(f"【上传】上传失败：未返回 file_id。文件名: {file.filename}")

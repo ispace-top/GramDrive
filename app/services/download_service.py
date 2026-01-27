@@ -1,13 +1,12 @@
 import asyncio
-import logging
 import os
-import httpx
 import time
 import uuid
-from typing import Dict, Any, List, Optional
+from typing import Any
+
+import httpx
 
 from .. import database
-from ..core.config import get_app_settings
 from ..core.logging_config import get_logger
 from ..services.telegram_service import TelegramService
 
@@ -65,10 +64,10 @@ class DownloadService:
 
             except Exception as e:
                 logger.error("Error in DownloadService _monitor_and_download: %s", e)
-            
+
             await asyncio.sleep(settings.get('polling_interval', 60)) # Poll every minute by default
 
-    async def _get_download_settings(self) -> Dict[str, Any]:
+    async def _get_download_settings(self) -> dict[str, Any]:
         settings = database.get_app_settings_from_db()
         return {
             'enabled': settings.get('AUTO_DOWNLOAD_ENABLED', False),
@@ -80,7 +79,7 @@ class DownloadService:
             'polling_interval': settings.get('DOWNLOAD_POLLING_INTERVAL', 60), # Default 60 seconds
         }
 
-    async def _fetch_and_queue_files_for_download(self, settings: Dict[str, Any]):
+    async def _fetch_and_queue_files_for_download(self, settings: dict[str, Any]):
         logger.info("【下载服务】正在获取待下载文件...")
         # For simplicity, we assume get_all_files returns all files and we filter here.
         # In a real scenario, you might want to query Telegram for new files.
@@ -118,17 +117,17 @@ class DownloadService:
         logger.info(f"【下载服务】已排队 {len(files_to_download)} 个文件待下载")
 
 
-    async def _process_download_queue(self, settings: Dict[str, Any]):
+    async def _process_download_queue(self, settings: dict[str, Any]):
         if self.download_queue.empty():
             logger.debug("Download queue is empty.")
             return
 
         logger.info("Processing download queue with %d items...", self.download_queue.qsize())
-        
+
         # Create a semaphore to limit concurrent downloads
         semaphore = asyncio.Semaphore(settings['threads'])
-        
-        async def download_worker(file_info: Dict[str, Any]):
+
+        async def download_worker(file_info: dict[str, Any]):
             task_id = str(uuid.uuid4())
             async with semaphore:
                 file_id = file_info['file_id']
@@ -236,7 +235,7 @@ class DownloadService:
         while not self.download_queue.empty():
             file_info = await self.download_queue.get()
             tasks.append(download_worker(file_info))
-        
+
         await asyncio.gather(*tasks)
         logger.info("Finished processing download queue.")
 

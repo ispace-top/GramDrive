@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Request, Form, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
-from starlette.templating import Jinja2Templates
 from urllib.parse import quote
 
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+from starlette.templating import Jinja2Templates
+
 from . import database
-from .core.config import get_active_password, get_app_settings
+from .core.config import get_app_settings
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -70,7 +71,7 @@ async def image_hosting_page(request: Request):
     image_extensions = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')
     # 为模板准备图片数据，只筛选图片文件
     files = [
-        file for file in all_files 
+        file for file in all_files
         if file["filename"].lower().endswith(image_extensions)
     ]
     return templates.TemplateResponse(

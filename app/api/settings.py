@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import contextlib
 import uuid
+
 import telegram
-from fastapi import APIRouter, Request, Response, HTTPException
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from telegram.request import HTTPXRequest
+
 from .. import database
 from ..core.config import get_app_settings
 from ..core.http_client import apply_runtime_settings
@@ -156,7 +159,7 @@ async def set_password(payload: PasswordRequest, request: Request):
         return {"status": "ok", "message": "密码已成功设置。"}
     except Exception as e:
         logger.error("写入密码失败: %s", e)
-        raise http_error(500, "无法写入密码。", code="write_password_failed", details=str(e))
+        raise http_error(500, "无法写入密码。", code="write_password_failed", details=str(e)) from e
 
 
 class VerifyRequest(BaseModel):
@@ -201,10 +204,8 @@ async def verify_channel(payload: VerifyRequest):
     bot = telegram.Bot(token=token, request=req)
     try:
         msg = await bot.send_message(chat_id=channel, text="tgState channel check")
-        try:
+        with contextlib.suppress(Exception):
             await bot.delete_message(chat_id=channel, message_id=msg.message_id)
-        except Exception:
-            pass
         return {"status": "ok", "available": True}
     except Exception as e:
         return {"status": "ok", "available": False, "message": str(e)}
