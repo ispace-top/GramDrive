@@ -82,12 +82,34 @@ async def apply_runtime_settings(app: FastAPI, *, start_bot: bool = True) -> Non
         if bot_ready:
             try:
                 await _start_bot(app, current)
+
+                # 启动或重启下载服务
+                if hasattr(app.state, "download_service") and app.state.download_service:
+                    # 如果已有下载服务，先停止
+                    await app.state.download_service.stop()
+                    logger.info("【下载服务】已停止，准备重启")
+
+                try:
+                    telegram_service = get_telegram_service()
+                    download_service_instance = await get_download_service(telegram_service, http_client)
+                    app.state.download_service = download_service_instance
+                    await download_service_instance.start()
+                    logger.info("【下载服务】已启动")
+                except Exception as e:
+                    logger.error("启动下载服务失败: %s", e, exc_info=True)
+                    app.state.download_service = None
+
             except Exception as e:
                 logger.error("应用配置已应用，但启动机器人失败: %s", e)
                 app.state.bot_error = str(e)
                 await _stop_bot(app)
         else:
             await _stop_bot(app)
+            # 如果bot不可用，也停止下载服务
+            if hasattr(app.state, "download_service") and app.state.download_service:
+                await app.state.download_service.stop()
+                app.state.download_service = None
+                logger.info("【下载服务】已停止（Bot未配置）")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
