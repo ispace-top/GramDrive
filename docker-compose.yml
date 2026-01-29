@@ -9,15 +9,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # 持久化数据目录 - 修改为本地相对路径，更通用
-      - ../GramDriveData/data:/app/data
-      -  ../GramDriveData/downloads:/app/downloads
+      # 使用命名卷持久化数据，避免权限问题
+      - ./gramdrive-data:/app/data
+      - ./gramdrive-downloads:/app/downloads
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=Asia/Shanghai
-    networks:
-      - gramdrive-network
-
-networks:
-  gramdrive-network:
-    driver: bridge
+      - DATA_DIR=/app/data
+      - DOWNLOAD_DIR=/app/downloads

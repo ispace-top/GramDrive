@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 
 from .core.logging_config import get_logger
 
-DATA_DIR = os.getenv("DATA_DIR", "app/data")
+# 使用绝对路径，确保 Docker 环境正常工作
+DATA_DIR = os.getenv("DATA_DIR", "/app/data")
 os.makedirs(DATA_DIR, exist_ok=True)
 DATABASE_URL = os.path.join(DATA_DIR, "file_metadata.db")
 
