@@ -73,7 +73,7 @@ class DownloadService:
             'enabled': settings.get('AUTO_DOWNLOAD_ENABLED', False),
             'download_dir': settings.get('DOWNLOAD_DIR', '/app/downloads'),
             'file_types': [ft.strip().lower() for ft in settings.get('DOWNLOAD_FILE_TYPES', 'image,video').split(',')],
-            'max_size': settings.get('DOWNLOAD_MAX_SIZE', 50 * 1024 * 1024), # Default 50MB
+            'max_size': settings.get('DOWNLOAD_MAX_SIZE', 10 * 1024 * 1024 * 1024), # Default 10GB
             'min_size': settings.get('DOWNLOAD_MIN_SIZE', 0), # Default 0MB
             'threads': settings.get('DOWNLOAD_THREADS', 3), # Default 3 threads
             'polling_interval': settings.get('DOWNLOAD_POLLING_INTERVAL', 60), # Default 60 seconds
@@ -81,17 +81,35 @@ class DownloadService:
 
     async def _fetch_and_queue_files_for_download(self, settings: dict[str, Any]):
         logger.info("【下载服务】正在获取待下载文件...")
-        # For simplicity, we assume get_all_files returns all files and we filter here.
-        # In a real scenario, you might want to query Telegram for new files.
-        all_files = database.get_all_files()
+        # 下载服务需要扫描所有文件（包括未下载的），所以使用 local_only=False
+        all_files = database.get_all_files(local_only=False)
 
         # Filter files that are not yet local and match criteria
         files_to_download = []
         for file_info in all_files:
-            # Check if already downloaded
-            if file_info.get('local_path'):
-                logger.debug(f"【下载服务】文件已下载，跳过。文件名: {file_info['filename']}")
-                continue
+            # Check if already downloaded or currently downloading
+            local_path = file_info.get('local_path')
+            if local_path:
+                # Skip if already downloaded or has a placeholder (downloading/error)
+                if not local_path.startswith('__'):
+                    logger.debug(f"【下载服务】文件已下载，跳过。文件名: {file_info['filename']}")
+                    continue
+                # If placeholder is error marker, we'll skip for now to avoid infinite retries
+                if local_path.startswith('__error_'):
+                    logger.debug(f"【下载服务】文件下载曾失败，跳过。文件名: {file_info['filename']}")
+                    continue
+                # If placeholder is downloading marker, check if it's stale (>10 minutes)
+                if local_path.startswith('__downloading_'):
+                    import re
+                    import time
+                    match = re.search(r'__downloading_(\d+)', local_path)
+                    if match:
+                        timestamp = int(match.group(1))
+                        if time.time() - timestamp < 600:  # 10 minutes
+                            logger.debug(f"【下载服务】文件正在下载中，跳过。文件名: {file_info['filename']}")
+                            continue
+                        else:
+                            logger.warning(f"【下载服务】检测到陈旧的下载标记，将重试。文件名: {file_info['filename']}")
 
             # Check file size
             if file_info['filesize'] > settings['max_size'] or file_info['filesize'] < settings['min_size']:
@@ -134,6 +152,10 @@ class DownloadService:
                 filename = file_info['filename']
                 total_size = file_info.get('filesize', 0)
                 logger.info("尝试下载 %s (ID: %s)", filename, file_id)
+
+                # 在开始下载前先标记为"正在下载"，避免重复排队
+                downloading_marker = f"__downloading_{int(time.time())}"
+                database.update_local_path(file_id, downloading_marker)
 
                 try:
                     # Announce start
@@ -184,7 +206,7 @@ class DownloadService:
                                     if current_time - last_update_time > 1:
                                         await progress_event_queue.put({
                                             "task_id": task_id, "file_id": file_id, "status": "downloading",
-                                            "downloaded": bytes_downloaded, "progress": (bytes_downloaded / total_size) if total_size > 0 else 0
+                                            "downloaded": bytes_downloaded, "total_size": total_size, "progress": (bytes_downloaded / total_size) if total_size > 0 else 0
                                         })
                                         last_update_time = current_time
                         download_success = True
@@ -197,11 +219,16 @@ class DownloadService:
                     if download_success and os.path.exists(local_filepath):
                         actual_file_size = os.path.getsize(local_filepath)
                         if actual_file_size != total_size:
-                            logger.warning(f"【下载服务】文件大小不匹配，跳过标记已下载。文件名: {filename}，预期: {total_size} bytes，实际: {actual_file_size} bytes")
+                            logger.warning(f"【下载服务】文件大小不匹配，标记为错误。文件名: {filename}，预期: {total_size} bytes，实际: {actual_file_size} bytes")
+                            # 标记为错误状态，避免重复下载
+                            database.update_local_path(file_id, f"__error_size_mismatch")
                             await progress_event_queue.put({
                                 "task_id": task_id, "file_id": file_id, "filename": filename,
                                 "status": "error", "error": "文件大小不匹配"
                             })
+                            # 删除不完整的文件
+                            if os.path.exists(local_filepath):
+                                os.remove(local_filepath)
                         else:
                             relative_local_path = os.path.relpath(local_filepath, start=settings['download_dir'])
                             result = database.update_local_path(file_id, relative_local_path)
@@ -209,27 +236,40 @@ class DownloadService:
                                 logger.info(f"【下载服务】文件下载完成。文件名: {filename}，路径: {relative_local_path}")
                                 await progress_event_queue.put({
                                     "task_id": task_id, "file_id": file_id, "filename": filename,
-                                    "status": "已完成"
+                                    "status": "completed"
                                 })
                             else:
-                                logger.error(f"【下载服务】数据库更新失败。文件名: {filename}，file_id: {file_id}")
+                                logger.error(f"【下载服务】数据库更新失败，标记为错误。文件名: {filename}，file_id: {file_id}")
+                                database.update_local_path(file_id, f"__error_db_update")
                                 await progress_event_queue.put({
                                     "task_id": task_id, "file_id": file_id, "filename": filename,
                                     "status": "error", "error": "数据库更新失败"
                                 })
                     else:
-                        logger.error(f"【下载服务】文件下载失败或文件不存在。文件名: {filename}，路径: {local_filepath}")
+                        logger.error(f"【下载服务】文件下载失败，标记为错误。文件名: {filename}，路径: {local_filepath}")
+                        database.update_local_path(file_id, f"__error_download_failed")
                         await progress_event_queue.put({
                             "task_id": task_id, "file_id": file_id, "filename": filename,
                             "status": "error", "error": "文件下载失败或不存在"
                         })
+                        # 清理可能存在的不完整文件
+                        if os.path.exists(local_filepath):
+                            os.remove(local_filepath)
 
                 except Exception as e:
                     logger.error("下载文件 %s (ID: %s) 失败: %s", filename, file_id, e)
+                    # 标记为错误，避免无限重试
+                    database.update_local_path(file_id, f"__error_exception")
                     await progress_event_queue.put({
                         "task_id": task_id, "file_id": file_id, "filename": filename,
                         "status": "error", "error": str(e)
                     })
+                    # 清理可能存在的不完整文件
+                    if 'local_filepath' in locals() and os.path.exists(local_filepath):
+                        try:
+                            os.remove(local_filepath)
+                        except Exception:
+                            pass
 
         tasks = []
         while not self.download_queue.empty():

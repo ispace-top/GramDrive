@@ -82,7 +82,7 @@ async def get_download_config():
             "enabled": settings.get("AUTO_DOWNLOAD_ENABLED", False),
             "download_dir": settings.get("DOWNLOAD_DIR", "/app/downloads"),
             "file_types": settings.get("DOWNLOAD_FILE_TYPES", "image,video"),
-            "max_size": settings.get("DOWNLOAD_MAX_SIZE", 52428800),
+            "max_size": settings.get("DOWNLOAD_MAX_SIZE", 10 * 1024 * 1024 * 1024),  # 10GB
             "min_size": settings.get("DOWNLOAD_MIN_SIZE", 0)
         }
         return {"status": "success", "data": config_data}
@@ -194,3 +194,18 @@ async def download_progress_stream(request: Request):
                 # Continue the loop
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post("/api/downloads/clear-errors", response_model=dict)
+async def clear_download_errors():
+    """清除所有下载错误标记，允许重新尝试下载"""
+    try:
+        cleared_count = database.clear_error_markers()
+        return {
+            "status": "success",
+            "message": f"已清除 {cleared_count} 个错误标记",
+            "cleared_count": cleared_count
+        }
+    except Exception as e:
+        logger.error("清除错误标记出错: %s", e)
+        raise http_error(500, "清除错误标记失败。") from e

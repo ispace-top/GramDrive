@@ -492,11 +492,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- SSE & Realtime Updates ---
     const fileListContainer = document.getElementById('file-list-disk');
     if (fileListContainer) {
+        // 检测当前页面类型
+        const isImageHostingPage = document.querySelector('.image-grid') !== null;
+
         // Initial fetch on load, applying current filter and sort selections
         const activeTab = document.querySelector('.category-tab.active');
-        const initialCategory = activeTab ? (activeTab.dataset.category || '') : '';
+        let initialCategory = activeTab ? (activeTab.dataset.category || '') : '';
+
+        // 如果是图床模式页面，强制使用 image category
+        if (isImageHostingPage) {
+            initialCategory = 'image';
+        }
+
         fetchAndRenderFiles(initialCategory, '', currentSort.field, currentSort.order);
-        
+
         let eventSource = null;
 
         const connectSSE = () => {
@@ -513,6 +522,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateBatchControls();
                     return;
                 }
+
+                // 如果是图床模式，只添加图片类型的文件
+                if (isImageHostingPage) {
+                    const mimeType = msg.mime_type || '';
+                    if (!mimeType.startsWith('image/')) {
+                        return; // 跳过非图片文件
+                    }
+                }
+
                 addNewFileElement(msg, 'afterbegin'); // Prepend new files
             };
 

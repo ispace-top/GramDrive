@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import mimetypes
+import os
 from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 
 from .. import database
@@ -19,6 +20,115 @@ from .common import http_error
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+async def serve_local_file(
+    local_path: str,
+    filename: str,
+    request: Request,
+    force_download: bool = False
+):
+    """
+    从本地文件系统提供文件，支持 Range 请求。
+
+    Args:
+        local_path: 本地文件完整路径
+        filename: 文件名
+        request: FastAPI Request 对象
+        force_download: 是否强制下载（而非预览）
+    """
+    if not os.path.exists(local_path):
+        raise http_error(404, "本地文件不存在", code="local_file_not_found")
+
+    file_size = os.path.getsize(local_path)
+    filename_encoded = quote(str(filename))
+
+    # 1. Content-Type
+    content_type, _ = mimetypes.guess_type(filename)
+    if not content_type:
+        ext = filename.lower().split('.')[-1] if '.' in filename else ''
+        if ext in ('txt', 'log', 'md', 'json', 'yml', 'yaml', 'ini', 'conf'):
+             content_type = "text/plain; charset=utf-8"
+        else:
+             content_type = "application/octet-stream"
+    else:
+        if content_type.startswith("text/") and "charset" not in content_type:
+             content_type += "; charset=utf-8"
+
+    # 2. Content-Disposition
+    preview_extensions = (
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".ico",
+        ".txt", ".md", ".json", ".xml", ".html", ".css", ".js", ".py", ".log",
+        ".mp4", ".mp3", ".webm", ".ogg", ".wav",
+        ".pdf"
+    )
+
+    is_previewable = filename.lower().endswith(preview_extensions)
+    disposition_type = "attachment" if force_download else ("inline" if is_previewable else "attachment")
+
+    common_headers = {
+        "Content-Disposition": f"{disposition_type}; filename*=UTF-8''{filename_encoded}",
+        "Content-Type": content_type,
+        "X-Content-Type-Options": "nosniff",
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(file_size)
+    }
+
+    # HEAD 请求
+    if request.method == "HEAD":
+        return Response(status_code=200, headers=common_headers)
+
+    # Range 请求处理
+    range_header = request.headers.get("Range")
+    if range_header:
+        try:
+            unit, ranges = range_header.split("=")
+            if unit != "bytes":
+                raise ValueError
+            start_str, end_str = ranges.split("-")
+            start = int(start_str)
+            end = int(end_str) if end_str else file_size - 1
+
+            if start >= file_size:
+                return Response(status_code=416, headers={"Content-Range": f"bytes */{file_size}"})
+
+            if end >= file_size:
+                end = file_size - 1
+
+            length = end - start + 1
+
+            common_headers.update({
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Content-Length": str(length)
+            })
+
+            async def range_streamer():
+                with open(local_path, "rb") as f:
+                    f.seek(start)
+                    remaining = length
+                    chunk_size = 64 * 1024  # 64KB chunks
+                    while remaining > 0:
+                        chunk = f.read(min(chunk_size, remaining))
+                        if not chunk:
+                            break
+                        yield chunk
+                        remaining -= len(chunk)
+
+            return StreamingResponse(range_streamer(), status_code=206, headers=common_headers)
+
+        except (ValueError, Exception):
+            pass  # Fallback to full content
+
+    # 完整文件响应（使用 FileResponse 更高效）
+    return FileResponse(
+        local_path,
+        media_type=content_type,
+        filename=filename,
+        headers={
+            "Content-Disposition": f"{disposition_type}; filename*=UTF-8''{filename_encoded}",
+            "X-Content-Type-Options": "nosniff",
+            "Accept-Ranges": "bytes"
+        }
+    )
 
 async def serve_file(
     file_id: str,
@@ -260,12 +370,8 @@ async def download_file_short(
 ):
     """
     New route for downloading files using short_id (or checking file_id).
+    优先从本地文件系统读取，避免频繁访问 Telegram API。
     """
-    try:
-        telegram_service = get_telegram_service()
-    except Exception as e:
-        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，下载不可用", code="cfg_missing") from e
-
     # Lookup metadata
     meta = database.get_file_by_id(identifier)
     if not meta:
@@ -274,6 +380,27 @@ async def download_file_short(
     # 增加下载计数（仅GET请求）
     if request.method == "GET":
         database.increment_download_count(meta['file_id'])
+
+    # 优先从本地文件系统读取
+    if meta.get('local_path'):
+        local_path_value = meta['local_path']
+        # 跳过占位符标记（__downloading_, __error_）
+        if not local_path_value.startswith('__'):
+            from ..core.config import get_app_settings
+            settings = get_app_settings()
+            download_dir = settings.get('DOWNLOAD_DIR', '/app/downloads')
+            full_local_path = os.path.join(download_dir, local_path_value)
+
+            if os.path.exists(full_local_path):
+                logger.info(f"【本地文件】从本地提供文件: {meta['filename']}")
+                return await serve_local_file(full_local_path, meta['filename'], request, download == "1" or download == "true")
+
+    # Fallback: 从 Telegram 流式传输（如果本地不可用）
+    logger.warning(f"【Telegram流式】本地文件不存在，从 Telegram 提供: {meta['filename']}")
+    try:
+        telegram_service = get_telegram_service()
+    except Exception as e:
+        raise http_error(503, "未配置 BOT_TOKEN/CHANNEL_NAME，下载不可用", code="cfg_missing") from e
 
     force_download = download == "1" or download == "true"
     return await serve_file(meta['file_id'], meta['filename'], telegram_service, client, request, force_download)

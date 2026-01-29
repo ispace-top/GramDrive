@@ -197,44 +197,53 @@ def _get_file_category_from_mime(mime_type: str | None, filename: str | None = N
     """
     根据 mime_type 或文件名推断文件类型。
     如果 mime_type 为空，尝试从文件扩展名推断。
+
+    Returns:
+        文件类别（英文）: "image", "video", "audio", "document", "other"
     """
     # 先尝试从 mime_type 推断
     if mime_type:
         if mime_type.startswith("image/"):
-            return "图片"
+            return "image"
         if mime_type.startswith("video/"):
-            return "视频"
+            return "video"
         if mime_type.startswith("audio/"):
-            return "音频"
+            return "audio"
         if mime_type in ["application/pdf", "application/msword",
                         "application/vnd.ms-excel", "application/vnd.ms-powerpoint",
                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         "application/vnd.openxmlformats-officedocument.presentationml.presentation"]:
-            return "文档"
+            return "document"
 
     # 如果 mime_type 为空或无法识别，尝试从文件扩展名推断
     if filename:
         filename_lower = filename.lower()
         # 图片扩展名
         if any(filename_lower.endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico']):
-            return "图片"
+            return "image"
         # 视频扩展名
         if any(filename_lower.endswith(ext) for ext in ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.3gp', '.3g2']):
-            return "视频"
+            return "video"
         # 音频扩展名
         if any(filename_lower.endswith(ext) for ext in ['.mp3', '.wav', '.aac', '.flac', '.ogg', '.wma', '.m4a', '.opus']):
-            return "音频"
+            return "audio"
         # 文档扩展名
         if any(filename_lower.endswith(ext) for ext in ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']):
-            return "文档"
+            return "document"
 
-    return "其他"
+    return "other"
 
 
-def get_all_files(category: str | None = None, sort_by: str | None = None, sort_order: str | None = None) -> list[dict]:
+def get_all_files(category: str | None = None, sort_by: str | None = None, sort_order: str | None = None, local_only: bool = True) -> list[dict]:
     """
     从数据库中获取所有文件的元数据，支持按类别、排序字段和排序顺序过滤。
+
+    Args:
+        category: 文件类别，支持英文（image, video, audio, document, other）或中文（图片, 视频, 音频, 文档, 其他）
+        sort_by: 排序字段（filename, filesize, upload_date）
+        sort_order: 排序顺序（asc, desc）
+        local_only: 是否只返回本地已下载的文件（默认 True，避免频繁访问 Telegram API）
     """
     with db_lock:
         conn = get_db_connection()
@@ -245,16 +254,24 @@ def get_all_files(category: str | None = None, sort_by: str | None = None, sort_
             params = []
 
             where_clauses = []
+
+            # 本地优先：只返回已下载的文件
+            if local_only:
+                where_clauses.append("local_path IS NOT NULL AND local_path != '' AND local_path NOT LIKE '__%%'")
+
             if category:
-                if category == "图片":
+                # 支持英文和中文 category 参数
+                category_lower = category.lower()
+
+                if category_lower in ("image", "图片"):
                     where_clauses.append("mime_type LIKE 'image/%'")
-                elif category == "视频":
+                elif category_lower in ("video", "视频"):
                     where_clauses.append("mime_type LIKE 'video/%'")
-                elif category == "音频":
+                elif category_lower in ("audio", "音频"):
                     where_clauses.append("mime_type LIKE 'audio/%'")
-                elif category == "文档":
+                elif category_lower in ("document", "文档"):
                     where_clauses.append("mime_type IN ('application/pdf', 'application/msword', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')")
-                elif category == "其他":
+                elif category_lower in ("other", "其他"):
                     # For 'other', filter out known types that have specific categories
                     known_mime_types = [
                         "image/%", "video/%", "audio/%", "application/pdf", "application/msword",
@@ -443,7 +460,7 @@ def get_app_settings_from_db() -> dict:
                 "AUTO_DOWNLOAD_ENABLED": bool(row[5]) if row[5] is not None else False,
                 "DOWNLOAD_DIR": row[6] or "/app/downloads",
                 "DOWNLOAD_FILE_TYPES": row[7] or "image,video",
-                "DOWNLOAD_MAX_SIZE": row[8] or 52428800,
+                "DOWNLOAD_MAX_SIZE": row[8] or 10737418240,  # 10GB
                 "DOWNLOAD_MIN_SIZE": row[9] or 0,
                 "DOWNLOAD_THREADS": row[10] or 4,
             }
@@ -481,9 +498,9 @@ def save_app_settings_to_db(payload: dict) -> None:
                     1 if payload.get("AUTO_DOWNLOAD_ENABLED") else 0,
                     norm(payload.get("DOWNLOAD_DIR")) or "/app/downloads",
                     norm(payload.get("DOWNLOAD_FILE_TYPES")) or "image,video",
-                    payload.get("DOWNLOAD_MAX_SIZE") or 52428800,
-                    payload.get("DOWNLOAD_MIN_SIZE") or 0,
-                    payload.get("DOWNLOAD_THREADS") or 4,
+                    payload.get("DOWNLOAD_MAX_SIZE") if payload.get("DOWNLOAD_MAX_SIZE") is not None else 10737418240,  # 10GB
+                    payload.get("DOWNLOAD_MIN_SIZE") if payload.get("DOWNLOAD_MIN_SIZE") is not None else 0,
+                    payload.get("DOWNLOAD_THREADS") if payload.get("DOWNLOAD_THREADS") is not None else 4,
                 )
             )
             conn.commit()
@@ -503,7 +520,7 @@ def reset_app_settings_in_db() -> None:
             "AUTO_DOWNLOAD_ENABLED": True,  # 默认启用自动下载
             "DOWNLOAD_DIR": "/app/downloads",
             "DOWNLOAD_FILE_TYPES": "image,video",
-            "DOWNLOAD_MAX_SIZE": 52428800,
+            "DOWNLOAD_MAX_SIZE": 10737418240,  # 10GB
             "DOWNLOAD_MIN_SIZE": 0,
         }
     )
@@ -822,8 +839,32 @@ def clear_local_path(file_id: str) -> bool:
             conn.commit()
             updated = cursor.rowcount > 0
             if updated:
-                logger.info("清空文件本地路径: %s", file_id)
+                logger.info("已清空文件本地路径: %s", file_id)
             return updated
+        finally:
+            conn.close()
+
+
+def clear_error_markers() -> int:
+    """
+    清除所有错误标记（__error_* 和陈旧的 __downloading_* 标记），以便重试下载。
+
+    Returns:
+        清除的标记数量
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            # 清除所有以 __ 开头的占位符标记（错误标记和下载标记）
+            cursor.execute(
+                "UPDATE files SET local_path = NULL WHERE local_path LIKE '__%%'"
+            )
+            conn.commit()
+            cleared_count = cursor.rowcount
+            if cleared_count > 0:
+                logger.info(f"【数据库】已清除 {cleared_count} 个错误/下载标记，可重新下载")
+            return cleared_count
         finally:
             conn.close()
 

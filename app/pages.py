@@ -66,14 +66,8 @@ async def image_hosting_page(request: Request):
     提供图床页面，并展示所有已上传的图片。
     权限验证已移至全局中间件。
     """
-    all_files = database.get_all_files()
-    # 定义图片文件后缀
-    image_extensions = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')
-    # 为模板准备图片数据，只筛选图片文件
-    files = [
-        file for file in all_files
-        if file["filename"].lower().endswith(image_extensions)
-    ]
+    # 直接使用 category 参数获取图片文件，基于 mime_type 过滤更可靠
+    files = database.get_all_files(category="image", sort_by="upload_date", sort_order="desc")
     return templates.TemplateResponse(
         "image_hosting.html",
         {"request": request, "files": files, "cfg": _page_cfg(request)},
