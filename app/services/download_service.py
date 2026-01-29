@@ -96,8 +96,42 @@ class DownloadService:
                     continue
                 # If placeholder is error marker, we'll skip for now to avoid infinite retries
                 if local_path.startswith('__error_'):
-                    logger.debug(f"【下载服务】文件下载曾失败，跳过。文件名: {file_info['filename']}")
-                    continue
+                    retry_count = file_info.get('retry_count', 0)
+                    last_retry_time_str = file_info.get('last_retry_time')
+
+                    # 最大重试次数：5次
+                    if retry_count >= 5:
+                        logger.debug(f"【下载服务】文件已达最大重试次数，跳过。文件名: {file_info['filename']}，重试次数: {retry_count}")
+                        continue
+
+                    # 计算指数退避延迟：30s * (2 ^ retry_count)
+                    # retry_count=0: 30s, 1: 60s, 2: 120s, 3: 240s, 4: 480s
+                    base_delay = 30  # 基础延迟（秒）
+                    delay_seconds = base_delay * (2 ** retry_count)
+
+                    # 检查是否应该重试（距离上次重试已过足够时间）
+                    if last_retry_time_str:
+                        from datetime import datetime, timezone
+                        try:
+                            # SQLite CURRENT_TIMESTAMP 格式为 'YYYY-MM-DD HH:MM:SS'
+                            last_retry_time = datetime.strptime(last_retry_time_str, '%Y-%m-%d %H:%M:%S')
+                            # 假设数据库时间为 UTC（根据实际情况调整）
+                            last_retry_time = last_retry_time.replace(tzinfo=timezone.utc)
+                            elapsed_seconds = (datetime.now(timezone.utc) - last_retry_time).total_seconds()
+
+                            if elapsed_seconds < delay_seconds:
+                                remaining = int(delay_seconds - elapsed_seconds)
+                                logger.debug(f"【下载服务】文件等待重试中。文件名: {file_info['filename']}，重试次数: {retry_count}，剩余等待时间: {remaining}秒")
+                                continue
+                            else:
+                                logger.info(f"【下载服务】文件达到重试时间，将重试。文件名: {file_info['filename']}，重试次数: {retry_count}，延迟: {delay_seconds}秒")
+                        except Exception as e:
+                            logger.error(f"【下载服务】解析重试时间失败。文件名: {file_info['filename']}，错误: {e}")
+                            # 解析失败，立即重试
+                    else:
+                        # 首次失败，立即重试
+                        logger.info(f"【下载服务】文件首次失败，立即重试。文件名: {file_info['filename']}")
+                    # 继续处理，将文件加入下载队列
                 # If placeholder is downloading marker, check if it's stale (>10 minutes)
                 if local_path.startswith('__downloading_'):
                     import re
@@ -220,8 +254,9 @@ class DownloadService:
                         actual_file_size = os.path.getsize(local_filepath)
                         if actual_file_size != total_size:
                             logger.warning(f"【下载服务】文件大小不匹配，标记为错误。文件名: {filename}，预期: {total_size} bytes，实际: {actual_file_size} bytes")
-                            # 标记为错误状态，避免重复下载
+                            # 标记为错误状态，并增加重试计数
                             database.update_local_path(file_id, f"__error_size_mismatch")
+                            database.increment_retry_count(file_id)
                             await progress_event_queue.put({
                                 "task_id": task_id, "file_id": file_id, "filename": filename,
                                 "status": "error", "error": "文件大小不匹配"
@@ -241,6 +276,7 @@ class DownloadService:
                             else:
                                 logger.error(f"【下载服务】数据库更新失败，标记为错误。文件名: {filename}，file_id: {file_id}")
                                 database.update_local_path(file_id, f"__error_db_update")
+                                database.increment_retry_count(file_id)
                                 await progress_event_queue.put({
                                     "task_id": task_id, "file_id": file_id, "filename": filename,
                                     "status": "error", "error": "数据库更新失败"
@@ -248,6 +284,7 @@ class DownloadService:
                     else:
                         logger.error(f"【下载服务】文件下载失败，标记为错误。文件名: {filename}，路径: {local_filepath}")
                         database.update_local_path(file_id, f"__error_download_failed")
+                        database.increment_retry_count(file_id)
                         await progress_event_queue.put({
                             "task_id": task_id, "file_id": file_id, "filename": filename,
                             "status": "error", "error": "文件下载失败或不存在"
@@ -258,8 +295,9 @@ class DownloadService:
 
                 except Exception as e:
                     logger.error("下载文件 %s (ID: %s) 失败: %s", filename, file_id, e)
-                    # 标记为错误，避免无限重试
+                    # 标记为错误，并增加重试计数
                     database.update_local_path(file_id, f"__error_exception")
+                    database.increment_retry_count(file_id)
                     await progress_event_queue.put({
                         "task_id": task_id, "file_id": file_id, "filename": filename,
                         "status": "error", "error": str(e)

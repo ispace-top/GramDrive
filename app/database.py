@@ -79,6 +79,20 @@ def init_db() -> None:
                 except Exception as e:
                     logger.error("迁移警告：添加 mime_type 列失败: %s", e)
 
+            if "retry_count" not in columns:
+                logger.info("数据库迁移: 正在添加 retry_count 列...")
+                try:
+                    cursor.execute("ALTER TABLE files ADD COLUMN retry_count INTEGER DEFAULT 0")
+                except Exception as e:
+                    logger.error("迁移警告：添加 retry_count 列失败: %s", e)
+
+            if "last_retry_time" not in columns:
+                logger.info("数据库迁移: 正在添加 last_retry_time 列...")
+                try:
+                    cursor.execute("ALTER TABLE files ADD COLUMN last_retry_time TIMESTAMP")
+                except Exception as e:
+                    logger.error("迁移警告：添加 last_retry_time 列失败: %s", e)
+
             # 确保唯一索引存在
             try:
                 cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_files_short_id ON files(short_id)")
@@ -251,7 +265,7 @@ def get_all_files(category: str | None = None, sort_by: str | None = None, sort_
         try:
             cursor = conn.cursor()
 
-            query = "SELECT filename, file_id, filesize, upload_date, short_id, mime_type, local_path FROM files"
+            query = "SELECT filename, file_id, filesize, upload_date, short_id, mime_type, local_path, retry_count, last_retry_time FROM files"
             params = []
 
             where_clauses = []
@@ -776,14 +790,78 @@ def update_local_path(file_id: str, local_path: str) -> bool:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE files SET local_path = ? WHERE file_id = ?",
-                (local_path, file_id)
-            )
+            # 如果是成功下载（非错误标记和非下载中标记），重置重试计数
+            if local_path and not local_path.startswith('__'):
+                cursor.execute(
+                    "UPDATE files SET local_path = ?, retry_count = 0, last_retry_time = NULL WHERE file_id = ?",
+                    (local_path, file_id)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE files SET local_path = ? WHERE file_id = ?",
+                    (local_path, file_id)
+                )
             conn.commit()
             updated = cursor.rowcount > 0
             if updated:
                 logger.info("更新文件本地路径: %s -> %s", file_id, local_path)
+            return updated
+        finally:
+            conn.close()
+
+
+def increment_retry_count(file_id: str) -> bool:
+    """
+    增加文件的重试计数并更新最后重试时间。
+
+    Args:
+        file_id: 文件ID
+
+    Returns:
+        是否成功更新
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE files SET retry_count = retry_count + 1, last_retry_time = CURRENT_TIMESTAMP WHERE file_id = ?",
+                (file_id,)
+            )
+            conn.commit()
+            updated = cursor.rowcount > 0
+            if updated:
+                cursor.execute("SELECT retry_count FROM files WHERE file_id = ?", (file_id,))
+                row = cursor.fetchone()
+                if row:
+                    logger.info("增加文件重试计数: %s (当前次数: %d)", file_id, row["retry_count"])
+            return updated
+        finally:
+            conn.close()
+
+
+def reset_retry_count(file_id: str) -> bool:
+    """
+    重置文件的重试计数。
+
+    Args:
+        file_id: 文件ID
+
+    Returns:
+        是否成功更新
+    """
+    with db_lock:
+        conn = get_db_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE files SET retry_count = 0, last_retry_time = NULL WHERE file_id = ?",
+                (file_id,)
+            )
+            conn.commit()
+            updated = cursor.rowcount > 0
+            if updated:
+                logger.info("重置文件重试计数: %s", file_id)
             return updated
         finally:
             conn.close()
