@@ -236,7 +236,7 @@ def _get_file_category_from_mime(mime_type: str | None, filename: str | None = N
     return "other"
 
 
-def get_all_files(category: str | None = None, sort_by: str | None = None, sort_order: str | None = None, local_only: bool = True) -> list[dict]:
+def get_all_files(category: str | None = None, sort_by: str | None = None, sort_order: str | None = None, local_only: bool = False) -> list[dict]:
     """
     从数据库中获取所有文件的元数据，支持按类别、排序字段和排序顺序过滤。
 
@@ -244,7 +244,7 @@ def get_all_files(category: str | None = None, sort_by: str | None = None, sort_
         category: 文件类别，支持英文（image, video, audio, document, other）或中文（图片, 视频, 音频, 文档, 其他）
         sort_by: 排序字段（filename, filesize, upload_date）
         sort_order: 排序顺序（asc, desc）
-        local_only: 是否只返回本地已下载的文件（默认 True，避免频繁访问 Telegram API）
+        local_only: 是否只返回本地已下载的文件（默认 False，显示所有文件）
     """
     with db_lock:
         conn = get_db_connection()
