@@ -91,9 +91,13 @@ async def handle_new_file(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             logger.debug(f"【Bot】跳过清单文件。文件名: {file_name}")
             return
 
+        # 从设置中获取最大文件大小限制（默认 10GB）
+        max_file_size = settings.get("DOWNLOAD_MAX_SIZE", 10 * 1024 * 1024 * 1024)
         file_size_mb = file_obj.file_size / 1024 / 1024
-        if file_obj.file_size >= (20 * 1024 * 1024):
-            logger.warning(f"【Bot】文件过大，跳过处理。文件名: {file_name}，大小: {file_size_mb:.2f}MB（限制: 20MB）")
+        max_size_mb = max_file_size / 1024 / 1024
+
+        if file_obj.file_size >= max_file_size:
+            logger.warning(f"【Bot】文件过大，跳过处理。文件名: {file_name}，大小: {file_size_mb:.2f}MB（限制: {max_size_mb:.2f}MB）")
             return
 
         # 使用复合ID "message_id:file_id"
