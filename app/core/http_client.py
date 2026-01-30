@@ -84,22 +84,20 @@ async def apply_runtime_settings(app: FastAPI, *, start_bot: bool = True) -> Non
                 await _start_bot(app, current)
 
                 # 启动或重启下载服务
-                # 临时禁用，解决死锁问题后再启用
-                # if hasattr(app.state, "download_service") and app.state.download_service:
-                #     # 如果已有下载服务，先停止
-                #     await app.state.download_service.stop()
-                #     logger.info("【下载服务】已停止，准备重启")
-                #
-                # try:
-                #     telegram_service = get_telegram_service()
-                #     download_service_instance = await get_download_service(telegram_service, http_client)
-                #     app.state.download_service = download_service_instance
-                #     await download_service_instance.start()
-                #     logger.info("【下载服务】已启动")
-                # except Exception as e:
-                #     logger.error("启动下载服务失败: %s", e, exc_info=True)
-                #     app.state.download_service = None
-                logger.warning("【下载服务】已临时禁用")
+                if hasattr(app.state, "download_service") and app.state.download_service:
+                    # 如果已有下载服务，先停止
+                    await app.state.download_service.stop()
+                    logger.info("【下载服务】已停止，准备重启")
+
+                try:
+                    telegram_service = get_telegram_service()
+                    download_service_instance = await get_download_service(telegram_service, http_client)
+                    app.state.download_service = download_service_instance
+                    await download_service_instance.start()
+                    logger.info("【下载服务】已启动")
+                except Exception as e:
+                    logger.error("启动下载服务失败: %s", e, exc_info=True)
+                    app.state.download_service = None
 
             except Exception as e:
                 logger.error("应用配置已应用，但启动机器人失败: %s", e)
@@ -152,18 +150,16 @@ async def lifespan(app: FastAPI):
             app.state.bot_error = str(e)
 
     # 4. 初始化并启动 DownloadService (只要配置了 Bot 就可以启动)
-    # 临时禁用，解决死锁问题后再启用
-    # if app.state.bot_ready:
-    #     try:
-    #         telegram_service = get_telegram_service()
-    #         download_service_instance = await get_download_service(telegram_service, http_client)
-    #         app.state.download_service = download_service_instance
-    #         await download_service_instance.start()
-    #         logger.info("【下载服务】已启动，使用共享的 HTTP 连接池")
-    #     except Exception as e:
-    #         logger.error("启动 DownloadService 失败: %s", e, exc_info=True)
-    #         app.state.download_service = None
-    logger.warning("【下载服务】已临时禁用，正在修复死锁问题")
+    if app.state.bot_ready:
+        try:
+            telegram_service = get_telegram_service()
+            download_service_instance = await get_download_service(telegram_service, http_client)
+            app.state.download_service = download_service_instance
+            await download_service_instance.start()
+            logger.info("【下载服务】已启动，使用共享的 HTTP 连接池")
+        except Exception as e:
+            logger.error("启动 DownloadService 失败: %s", e, exc_info=True)
+            app.state.download_service = None
 
     yield # 应用在此处运行
 

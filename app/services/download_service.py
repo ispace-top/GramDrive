@@ -195,7 +195,7 @@ class DownloadService:
 
                 # 在开始下载前先标记为"正在下载"，避免重复排队
                 downloading_marker = f"__downloading_{int(time.time())}"
-                database.update_local_path(file_id, downloading_marker)
+                await asyncio.to_thread(database.update_local_path, file_id, downloading_marker)
 
                 try:
                     # Announce start
@@ -261,8 +261,8 @@ class DownloadService:
                         if actual_file_size != total_size:
                             logger.warning(f"【下载服务】文件大小不匹配，标记为错误。文件名: {filename}，预期: {total_size} bytes，实际: {actual_file_size} bytes")
                             # 标记为错误状态，并增加重试计数
-                            database.update_local_path(file_id, f"__error_size_mismatch")
-                            database.increment_retry_count(file_id)
+                            await asyncio.to_thread(database.update_local_path, file_id, f"__error_size_mismatch")
+                            await asyncio.to_thread(database.increment_retry_count, file_id)
                             await progress_event_queue.put({
                                 "task_id": task_id, "file_id": file_id, "filename": filename,
                                 "status": "error", "error": "文件大小不匹配"
@@ -272,7 +272,7 @@ class DownloadService:
                                 os.remove(local_filepath)
 
                             # 广播文件状态更新
-                            updated_file = database.get_file_by_id(file_id)
+                            updated_file = await asyncio.to_thread(database.get_file_by_id, file_id)
                             if updated_file:
                                 await file_update_queue.publish(json.dumps({
                                     "action": "update",
@@ -280,7 +280,7 @@ class DownloadService:
                                 }))
                         else:
                             relative_local_path = os.path.relpath(local_filepath, start=settings['download_dir'])
-                            result = database.update_local_path(file_id, relative_local_path)
+                            result = await asyncio.to_thread(database.update_local_path, file_id, relative_local_path)
                             if result:
                                 logger.info(f"【下载服务】文件下载完成。文件名: {filename}，路径: {relative_local_path}")
                                 await progress_event_queue.put({
@@ -289,7 +289,7 @@ class DownloadService:
                                 })
 
                                 # 广播文件状态更新
-                                updated_file = database.get_file_by_id(file_id)
+                                updated_file = await asyncio.to_thread(database.get_file_by_id, file_id)
                                 if updated_file:
                                     await file_update_queue.publish(json.dumps({
                                         "action": "update",
@@ -297,15 +297,15 @@ class DownloadService:
                                     }))
                             else:
                                 logger.error(f"【下载服务】数据库更新失败，标记为错误。文件名: {filename}，file_id: {file_id}")
-                                database.update_local_path(file_id, f"__error_db_update")
-                                database.increment_retry_count(file_id)
+                                await asyncio.to_thread(database.update_local_path, file_id, f"__error_db_update")
+                                await asyncio.to_thread(database.increment_retry_count, file_id)
                                 await progress_event_queue.put({
                                     "task_id": task_id, "file_id": file_id, "filename": filename,
                                     "status": "error", "error": "数据库更新失败"
                                 })
 
                                 # 广播文件状态更新
-                                updated_file = database.get_file_by_id(file_id)
+                                updated_file = await asyncio.to_thread(database.get_file_by_id, file_id)
                                 if updated_file:
                                     await file_update_queue.publish(json.dumps({
                                         "action": "update",
@@ -313,8 +313,8 @@ class DownloadService:
                                     }))
                     else:
                         logger.error(f"【下载服务】文件下载失败，标记为错误。文件名: {filename}，路径: {local_filepath}")
-                        database.update_local_path(file_id, f"__error_download_failed")
-                        database.increment_retry_count(file_id)
+                        await asyncio.to_thread(database.update_local_path, file_id, f"__error_download_failed")
+                        await asyncio.to_thread(database.increment_retry_count, file_id)
                         await progress_event_queue.put({
                             "task_id": task_id, "file_id": file_id, "filename": filename,
                             "status": "error", "error": "文件下载失败或不存在"
@@ -324,7 +324,7 @@ class DownloadService:
                             os.remove(local_filepath)
 
                         # 广播文件状态更新
-                        updated_file = database.get_file_by_id(file_id)
+                        updated_file = await asyncio.to_thread(database.get_file_by_id, file_id)
                         if updated_file:
                             await file_update_queue.publish(json.dumps({
                                 "action": "update",
@@ -334,8 +334,8 @@ class DownloadService:
                 except Exception as e:
                     logger.error("下载文件 %s (ID: %s) 失败: %s", filename, file_id, e)
                     # 标记为错误，并增加重试计数
-                    database.update_local_path(file_id, f"__error_exception")
-                    database.increment_retry_count(file_id)
+                    await asyncio.to_thread(database.update_local_path, file_id, f"__error_exception")
+                    await asyncio.to_thread(database.increment_retry_count, file_id)
                     await progress_event_queue.put({
                         "task_id": task_id, "file_id": file_id, "filename": filename,
                         "status": "error", "error": str(e)
@@ -348,7 +348,7 @@ class DownloadService:
                             pass
 
                     # 广播文件状态更新
-                    updated_file = database.get_file_by_id(file_id)
+                    updated_file = await asyncio.to_thread(database.get_file_by_id, file_id)
                     if updated_file:
                         await file_update_queue.publish(json.dumps({
                             "action": "update",
