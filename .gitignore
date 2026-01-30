@@ -69,3 +69,10 @@ coverage.xml
 
 # Ruff cache
 .ruff_cache/
+
+# Application data directories
+gramdrive-downloads/
+gramdrive-data/
+
+# GPG keys
+*.gpg
