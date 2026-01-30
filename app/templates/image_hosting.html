@@ -33,16 +33,25 @@
 
     <!-- Batch Actions with Upload Button -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <div class="flex-between hidden" id="batch-actions-bar" style="background: var(--bg-surface-hover); padding: 12px 16px; border-radius: var(--radius-md); flex: 1; margin-right: 12px;">
-            <span class="text-sm font-medium"><span id="selection-counter">0</span> 项已选</span>
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                <div class="link-format-selector" style="display: flex; gap: 4px; margin-right: 8px;">
-                    <button class="btn btn-ghost btn-sm active format-option" data-format="url" style="height: 32px; font-size: 12px;">URL</button>
-                    <button class="btn btn-ghost btn-sm format-option" data-format="markdown" style="height: 32px; font-size: 12px;">MD</button>
-                    <button class="btn btn-ghost btn-sm format-option" data-format="html" style="height: 32px; font-size: 12px;">HTML</button>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="source-toggle" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-surface-hover); border-radius: var(--radius-md);">
+                <span class="text-sm text-muted" style="white-space: nowrap;">数据源:</span>
+                <div class="toggle-group" style="display: flex; background: var(--bg-body); border-radius: 6px; padding: 2px;">
+                    <button class="toggle-btn active" data-local="false" style="padding: 4px 10px; font-size: 12px; border: none; background: var(--primary-color); color: white; border-radius: 4px; cursor: pointer; transition: all 0.2s;">云端</button>
+                    <button class="toggle-btn" data-local="true" style="padding: 4px 10px; font-size: 12px; border: none; background: transparent; color: var(--text-secondary); border-radius: 4px; cursor: pointer; transition: all 0.2s;">本地</button>
                 </div>
-                <button id="copy-links-btn" class="btn btn-secondary btn-sm" style="height: 32px; font-size: 13px;">复制</button>
-                <button id="batch-delete-btn" class="btn btn-secondary btn-sm" style="height: 32px; font-size: 13px; color: var(--danger-color);">删除</button>
+            </div>
+            <div class="flex-between hidden" id="batch-actions-bar" style="background: var(--bg-surface-hover); padding: 12px 16px; border-radius: var(--radius-md);">
+                <span class="text-sm font-medium"><span id="selection-counter">0</span> 项已选</span>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: 12px;">
+                    <div class="link-format-selector" style="display: flex; gap: 4px; margin-right: 8px;">
+                        <button class="btn btn-ghost btn-sm active format-option" data-format="url" style="height: 32px; font-size: 12px;">URL</button>
+                        <button class="btn btn-ghost btn-sm format-option" data-format="markdown" style="height: 32px; font-size: 12px;">MD</button>
+                        <button class="btn btn-ghost btn-sm format-option" data-format="html" style="height: 32px; font-size: 12px;">HTML</button>
+                    </div>
+                    <button id="copy-links-btn" class="btn btn-secondary btn-sm" style="height: 32px; font-size: 13px;">复制</button>
+                    <button id="batch-delete-btn" class="btn btn-secondary btn-sm" style="height: 32px; font-size: 13px; color: var(--danger-color);">删除</button>
+                </div>
             </div>
         </div>
         <button id="upload-button" class="btn btn-primary" style="height: 40px;">

@@ -410,10 +410,13 @@ async def download_file_short(
 async def get_files_list(
     category: str | None = Query(None),
     sort_by: str | None = Query(None, pattern="^(filename|filesize|upload_date)$"),
-    sort_order: str | None = Query(None, pattern="^(asc|desc)$")
+    sort_order: str | None = Query(None, pattern="^(asc|desc)$"),
+    local_only: bool = Query(False, description="是否只返回本地已下载的文件")
 ):
     # Pass parameters to get_all_files
-    return database.get_all_files(category=category, sort_by=sort_by, sort_order=sort_order)
+    return database.get_all_files(
+        category=category, sort_by=sort_by, sort_order=sort_order, local_only=local_only
+    )
 
 
 @router.delete("/api/files/{file_id}")

@@ -65,6 +65,17 @@ async def get_dashboard_stats(settings: Settings = Depends(get_settings)):
             f_copy["filesize_formatted"] = format_size(f_copy.get("filesize", 0))
             popular_files.append(f_copy)
 
+        # 4.5 整理本地文件类型分布
+        local_file_types = []
+        for type_name, type_data in raw_stats.get("local_by_type", {}).items():
+            local_file_types.append({
+                "type": type_name,
+                "type_label": type_labels.get(type_name, '未知'),
+                "count": type_data.get("count", 0),
+                "size": type_data.get("size", 0),
+                "size_formatted": format_size(type_data.get("size", 0))
+            })
+
         # 5. 组装前端需要的数据结构
         data_for_frontend = {
             "total_count": total_files,
@@ -77,6 +88,9 @@ async def get_dashboard_stats(settings: Settings = Depends(get_settings)):
             "popular_files": popular_files,
             "recent_uploads": raw_stats.get("recent_uploads", []),
             "local_files_count": raw_stats.get("local_files_count", 0),
+            "local_files_size": raw_stats.get("local_files_size", 0),
+            "local_files_size_formatted": format_size(raw_stats.get("local_files_size", 0)),
+            "local_file_types": local_file_types,
             "total_tags": raw_stats.get("total_tags", 0)
         }
 

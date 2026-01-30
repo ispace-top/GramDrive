@@ -14,6 +14,15 @@
     </div>
 
     <div id="statsContent" style="display: none;">
+        <!-- 数据源切换 -->
+        <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+            <span class="text-muted" style="font-size: 14px;">统计范围:</span>
+            <div class="stats-toggle-group" style="display: flex; background: var(--hover-bg); border-radius: 8px; padding: 4px;">
+                <button class="stats-toggle-btn active" data-source="cloud" style="padding: 8px 16px; font-size: 14px; border: none; background: var(--primary-color); color: white; border-radius: 6px; cursor: pointer; transition: all 0.2s;">云端文件</button>
+                <button class="stats-toggle-btn" data-source="local" style="padding: 8px 16px; font-size: 14px; border: none; background: transparent; color: var(--text-muted); border-radius: 6px; cursor: pointer; transition: all 0.2s;">本地已下载</button>
+            </div>
+        </div>
+
         <!-- 总体统计卡片 -->
         <div class="stats-grid">
             <div class="stat-card">
@@ -236,6 +245,9 @@
 </style>
 
 <script>
+let statsData = null;
+let currentSource = 'cloud'; // 'cloud' or 'local'
+
 async function loadStats() {
     try {
         const response = await fetch('/api/stats/dashboard');
@@ -248,64 +260,8 @@ async function loadStats() {
             throw new Error('Invalid response format');
         }
 
-        const data = result.data;
-
-        // 更新总体统计 (显示 0 而不是错误)
-        document.getElementById('totalCount').textContent = (data.total_count || 0).toLocaleString();
-        document.getElementById('totalSize').textContent = data.total_size_formatted || '0 B';
-        document.getElementById('totalDownloads').textContent = (data.total_downloads || 0).toLocaleString();
-        document.getElementById('avgSize').textContent = data.avg_size_formatted || '0 B';
-
-        // 文件类型分布
-        const fileTypesHtml = (data.file_types || []).map(type => {
-            const icons = {
-                'image': '🖼️',
-                'video': '🎬',
-                'audio': '🎵',
-                'document': '📄',
-                'archive': '📦',
-                'other': '📁'
-            };
-
-            const colors = {
-                'image': '#667eea',
-                'video': '#f093fb',
-                'audio': '#4facfe',
-                'document': '#fa709a',
-                'archive': '#f6d365',
-                'other': '#a8edea'
-            };
-
-            return `
-                <div class="file-type-item">
-                    <div class="file-type-icon" style="background: ${colors[type.type] || colors.other}33;">
-                        ${icons[type.type] || icons.other}
-                    </div>
-                    <div class="file-type-info">
-                        <div class="file-type-name">${type.type_label}</div>
-                        <div class="file-type-stats">${type.count} 个文件 · ${type.size_formatted}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        document.getElementById('fileTypesList').innerHTML = fileTypesHtml || '<p class="text-muted">暂无数据</p>';
-
-        // 热门文件
-        const popularFilesHtml = ((data.popular_files || []).slice(0, 10)).map((file, index) => `
-            <div class="popular-file-item">
-                <div class="popular-file-rank" style="background: ${index < 3 ? '#f5576c' : '#667eea'}">
-                    ${index + 1}
-                </div>
-                <div class="popular-file-info">
-                    <div class="popular-file-name" title="${file.filename}">${file.filename}</div>
-                    <div class="popular-file-meta">${file.filesize_formatted}</div>
-                </div>
-                <div class="popular-file-downloads">${file.download_count}</div>
-            </div>
-        `).join('');
-
-        document.getElementById('popularFilesList').innerHTML = popularFilesHtml || '<p class="text-muted">暂无数据</p>';
+        statsData = result.data;
+        renderStats();
 
         // 显示内容
         document.getElementById('statsLoading').style.display = 'none';
@@ -313,11 +269,9 @@ async function loadStats() {
 
     } catch (error) {
         console.error('Failed to load stats:', error);
-        // Show default "no data" state instead of error message
         document.getElementById('statsLoading').style.display = 'none';
         document.getElementById('statsContent').style.display = 'block';
 
-        // Set all values to 0/empty
         document.getElementById('totalCount').textContent = '0';
         document.getElementById('totalSize').textContent = '0 B';
         document.getElementById('totalDownloads').textContent = '0';
@@ -326,6 +280,116 @@ async function loadStats() {
         document.getElementById('popularFilesList').innerHTML = '<p class="text-muted">暂无数据</p>';
     }
 }
+
+function renderStats() {
+    if (!statsData) return;
+
+    const isLocal = currentSource === 'local';
+
+    // 选择对应数据
+    const count = isLocal ? (statsData.local_files_count || 0) : (statsData.total_count || 0);
+    const size = isLocal ? (statsData.local_files_size || 0) : (statsData.total_size || 0);
+    const sizeFormatted = isLocal ? (statsData.local_files_size_formatted || '0 B') : (statsData.total_size_formatted || '0 B');
+    const fileTypes = isLocal ? (statsData.local_file_types || []) : (statsData.file_types || []);
+
+    // 计算平均大小
+    const avgSize = count > 0 ? size / count : 0;
+    const avgSizeFormatted = formatSize(avgSize);
+
+    // 更新总体统计
+    document.getElementById('totalCount').textContent = count.toLocaleString();
+    document.getElementById('totalSize').textContent = sizeFormatted;
+    document.getElementById('totalDownloads').textContent = (statsData.total_downloads || 0).toLocaleString();
+    document.getElementById('avgSize').textContent = avgSizeFormatted;
+
+    // 文件类型分布
+    const icons = {
+        'image': '🖼️',
+        'video': '🎬',
+        'audio': '🎵',
+        'document': '📄',
+        'archive': '📦',
+        'pdf': '📑',
+        'text': '📝',
+        'other': '📁'
+    };
+
+    const colors = {
+        'image': '#667eea',
+        'video': '#f093fb',
+        'audio': '#4facfe',
+        'document': '#fa709a',
+        'archive': '#f6d365',
+        'pdf': '#ff6b6b',
+        'text': '#51cf66',
+        'other': '#a8edea'
+    };
+
+    const fileTypesHtml = fileTypes.map(type => `
+        <div class="file-type-item">
+            <div class="file-type-icon" style="background: ${colors[type.type] || colors.other}33;">
+                ${icons[type.type] || icons.other}
+            </div>
+            <div class="file-type-info">
+                <div class="file-type-name">${type.type_label}</div>
+                <div class="file-type-stats">${type.count} 个文件 · ${type.size_formatted}</div>
+            </div>
+        </div>
+    `).join('');
+
+    document.getElementById('fileTypesList').innerHTML = fileTypesHtml || '<p class="text-muted">暂无数据</p>';
+
+    // 热门文件（始终显示，不区分 local/cloud）
+    const popularFilesHtml = ((statsData.popular_files || []).slice(0, 10)).map((file, index) => `
+        <div class="popular-file-item">
+            <div class="popular-file-rank" style="background: ${index < 3 ? '#f5576c' : '#667eea'}">
+                ${index + 1}
+            </div>
+            <div class="popular-file-info">
+                <div class="popular-file-name" title="${file.filename}">${file.filename}</div>
+                <div class="popular-file-meta">${file.filesize_formatted}</div>
+            </div>
+            <div class="popular-file-downloads">${file.download_count}</div>
+        </div>
+    `).join('');
+
+    document.getElementById('popularFilesList').innerHTML = popularFilesHtml || '<p class="text-muted">暂无数据</p>';
+}
+
+function formatSize(sizeInBytes) {
+    if (sizeInBytes == null || sizeInBytes === 0) return '0 B';
+    if (sizeInBytes < 1024) return `${sizeInBytes} B`;
+    let size = sizeInBytes;
+    for (const unit of ['B', 'KB', 'MB', 'GB', 'TB']) {
+        if (size < 1024.0) return `${size.toFixed(2)} ${unit}`;
+        size /= 1024.0;
+    }
+    return `${size.toFixed(2)} PB`;
+}
+
+// 切换按钮事件
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.stats-toggle-btn');
+    if (!btn) return;
+
+    const source = btn.dataset.source;
+    if (source === currentSource) return;
+
+    currentSource = source;
+
+    // 更新按钮样式
+    document.querySelectorAll('.stats-toggle-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-muted)';
+    });
+    btn.classList.add('active');
+    btn.style.background = 'var(--primary-color)';
+    btn.style.color = 'white';
+
+    // 重新渲染
+    renderStats();
+});
 
 // 页面加载时获取统计数据
 loadStats();
