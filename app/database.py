@@ -325,19 +325,27 @@ def get_all_files(category: str | None = None, sort_by: str | None = None, sort_
 
             cursor.execute(query, params)
             files = []
+            # 使用默认的 max_retries 值5，避免在锁内部再次查询导致死锁
+            # 如果需要使用配置的值，调用者应该先获取设置再调用此函数
+            max_retries = 5
+
             for row in cursor.fetchall():
                 d = dict(row)
-                # 计算下载状态
-                d['download_status'] = _compute_download_status(d)
+                # 计算下载状态，传递 max_retries
+                d['download_status'] = _compute_download_status(d, max_retries)
                 files.append(d)
             return files
         finally:
             conn.close()
 
 
-def _compute_download_status(file_info: dict) -> dict:
+def _compute_download_status(file_info: dict, max_retries: int = 5) -> dict:
     """
     根据文件的 local_path 和 retry_count 计算下载状态。
+
+    Args:
+        file_info: 文件信息字典
+        max_retries: 最大重试次数（默认5次）
 
     Returns:
         dict: {
@@ -349,10 +357,6 @@ def _compute_download_status(file_info: dict) -> dict:
     """
     local_path = file_info.get('local_path') or ''
     retry_count = file_info.get('retry_count') or 0
-
-    # 从配置中获取最大重试次数
-    settings = get_app_settings_from_db()
-    max_retries = settings.get('DOWNLOAD_MAX_RETRIES', 5)
 
     if not local_path:
         return {"status": "pending", "label": "待下载"}
