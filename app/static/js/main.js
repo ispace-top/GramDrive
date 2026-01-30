@@ -81,9 +81,12 @@ document.addEventListener('DOMContentLoaded', () => {
         order: localStorage.getItem('file-sort-order') || 'desc'
     };
 
+    // Local only toggle state
+    let localOnlyMode = localStorage.getItem('file-local-only') === 'true';
+
 
     // --- File Fetching and Rendering ---
-    async function fetchAndRenderFiles(category = '', searchTerm = '', sortBy = 'upload_date', sortOrder = 'desc') { // Added sortBy, sortOrder
+    async function fetchAndRenderFiles(category = '', searchTerm = '', sortBy = 'upload_date', sortOrder = 'desc', localOnly = false) { // Added sortBy, sortOrder, localOnly
         const fileListDisk = document.getElementById('file-list-disk');
         if (!fileListDisk) return; // Not on the main files page
 
@@ -94,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (searchTerm) url += `search=${searchTerm}&`;
         if (sortBy) url += `sort_by=${sortBy}&`; // Add sortBy
         if (sortOrder) url += `sort_order=${sortOrder}&`; // Add sortOrder
+        url += `local_only=${localOnly}&`; // Add localOnly
         url = url.slice(0, -1); // Remove trailing '&' or '?'
 
         try {
@@ -129,12 +133,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const term = searchInput ? searchInput.value : '';
         const activeTab = document.querySelector('.category-tab.active');
         const category = activeTab ? (activeTab.dataset.category || '') : '';
-        
+
         // Save sort preferences to LocalStorage
         localStorage.setItem('file-sort-by', currentSort.field);
         localStorage.setItem('file-sort-order', currentSort.order);
+        localStorage.setItem('file-local-only', localOnlyMode);
 
-        fetchAndRenderFiles(category, term, currentSort.field, currentSort.order);
+        fetchAndRenderFiles(category, term, currentSort.field, currentSort.order, localOnlyMode);
     };
 
     // Update visual indicators for initial sort
@@ -174,6 +179,49 @@ document.addEventListener('DOMContentLoaded', () => {
         // Refresh file list with selected category
         applyFiltersAndSort();
     });
+
+    // Local/Cloud toggle switching
+    document.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('.toggle-btn');
+        if (!toggleBtn) return;
+
+        const toggleGroup = toggleBtn.closest('.toggle-group');
+        if (!toggleGroup) return;
+
+        // Update active state
+        toggleGroup.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = 'transparent';
+            btn.style.color = 'var(--text-secondary)';
+        });
+        toggleBtn.classList.add('active');
+        toggleBtn.style.background = 'var(--primary-color)';
+        toggleBtn.style.color = 'white';
+
+        // Update localOnlyMode
+        localOnlyMode = toggleBtn.dataset.local === 'true';
+
+        // Refresh file list
+        applyFiltersAndSort();
+    });
+
+    // Initialize toggle button state on page load
+    const initToggleState = () => {
+        const toggleBtns = document.querySelectorAll('.toggle-btn');
+        toggleBtns.forEach(btn => {
+            const isLocal = btn.dataset.local === 'true';
+            if (isLocal === localOnlyMode) {
+                btn.classList.add('active');
+                btn.style.background = 'var(--primary-color)';
+                btn.style.color = 'white';
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--text-secondary)';
+            }
+        });
+    };
+    initToggleState();
 
     // Category Tab switching
 
@@ -504,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initialCategory = 'image';
         }
 
-        fetchAndRenderFiles(initialCategory, '', currentSort.field, currentSort.order);
+        fetchAndRenderFiles(initialCategory, '', currentSort.field, currentSort.order, localOnlyMode);
 
         let eventSource = null;
 
@@ -531,7 +579,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                addNewFileElement(msg, 'afterbegin'); // Prepend new files
+                // 检查文件是否已存在，如果存在则更新状态
+                const safeId = msg.file_id.replace(':', '-');
+                const existingElement = document.getElementById(`file-item-${safeId}`);
+
+                if (existingElement) {
+                    // 文件已存在，更新下载状态
+                    if (msg.download_status) {
+                        updateFileElementStatus(msg.file_id, msg.download_status);
+                    }
+                } else {
+                    // 新文件，添加到列表
+                    addNewFileElement(msg, 'afterbegin'); // Prepend new files
+                }
             };
 
             eventSource.onerror = () => {
@@ -552,6 +612,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return s.split(' ')[0].split('T')[0];
     }
 
+    // 生成下载状态徽章 HTML（简化版：只有三种状态）
+    function getStatusBadgeHtml(downloadStatus) {
+        if (!downloadStatus || downloadStatus.status === 'completed') {
+            return '';
+        }
+
+        // 简化状态映射
+        let displayStatus = '';
+        let style = '';
+
+        if (downloadStatus.status === 'downloading' || downloadStatus.status === 'retrying' || downloadStatus.status === 'pending') {
+            // 下载中、重试中、等待下载都显示为"下载中"
+            displayStatus = '下载中';
+            style = 'background: #3b82f6; color: white;';
+        } else if (downloadStatus.status === 'failed') {
+            // 下载失败
+            displayStatus = '下载失败';
+            style = 'background: #ef4444; color: white;';
+        } else {
+            return ''; // 其他状态不显示徽章
+        }
+
+        return `<span class="status-badge" style="${style} padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 8px; white-space: nowrap;">${displayStatus}</span>`;
+    }
+
     function addNewFileElement(file, position = 'afterbegin') { // Default to afterbegin for new uploads
         const isGridView = document.querySelector('.image-grid') !== null;
         const container = document.getElementById('file-list-disk');
@@ -564,7 +649,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const formattedSize = (file.filesize / (1024 * 1024)).toFixed(2) + " MB";
         const formattedDate = formatDateValue(file.upload_date);
         const safeId = file.file_id.replace(':', '-');
-        
+        const statusBadge = getStatusBadgeHtml(file.download_status);
+        const isDownloading = file.download_status && ['downloading', 'retrying', 'failed', 'pending'].includes(file.download_status.status);
+
         // URL construction: Always use /d/{file_id} (short_id preferred)
         // 回滚：只使用 /d/{id} 格式，不再拼接文件名或 slug
         let fileUrl = `/d/${file.short_id || file.file_id}`;
@@ -578,20 +665,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? `/api/thumbnail/${file.short_id || file.file_id}?size=medium`
                 : fileUrl;
              const imgOnerror = isImage ? `onerror="this.src='${fileUrl}'"` : '';
+             // 如果正在下载/重试中，图片显示占位符
+             const displayImgSrc = isDownloading ? '' : imgSrc;
+             const placeholderStyle = isDownloading ? 'display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 12px;' : '';
 
              html = `
-                <div class="file-item image-card clickable-file-row" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-body);" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}" data-file-type="${mimeType}">
-                    <div style="position: relative; aspect-ratio: 16/9; background: #000;">
-                        <img src="${imgSrc}" loading="lazy" style="width: 100%; height: 100%; object-fit: contain;" alt="${file.filename}" ${imgOnerror}>
+                <div class="file-item image-card clickable-file-row" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-body);${isDownloading ? ' opacity: 0.7;' : ''}" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}" data-file-type="${mimeType}">
+                    <div style="position: relative; aspect-ratio: 16/9; background: #1a1a1a; ${placeholderStyle}">
+                        ${isDownloading ? `<span>${getDownloadStatusText(file.download_status)}</span>` : `<img src="${displayImgSrc}" loading="lazy" style="width: 100%; height: 100%; object-fit: contain;" alt="${file.filename}" ${imgOnerror}>`}
                         <div style="position: absolute; top: 8px; left: 8px;">
                             <input type="checkbox" class="file-checkbox" data-file-id="${file.file_id}" style="width: 16px; height: 16px; cursor: pointer;" onclick="event.stopPropagation()">
                         </div>
                     </div>
                     <div style="padding: 12px;">
                         <div class="text-sm font-medium" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;" title="${file.filename}">${file.filename}</div>
-                        <div class="text-sm text-muted" style="margin-bottom: 12px;">${formattedSize}</div>
+                        <div class="text-sm text-muted" style="margin-bottom: 12px;">${formattedSize}${statusBadge}</div>
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-secondary btn-sm copy-link-btn" style="flex: 1; height: 32px;">复制</button>
+                            <button class="btn btn-secondary btn-sm copy-link-btn" style="flex: 1; height: 32px;"${isDownloading ? ' disabled' : ''}>复制</button>
                             <button class="btn btn-secondary btn-sm delete" style="height: 32px; color: var(--danger-color);" onclick="deleteFile('${file.file_id}')">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             </button>
@@ -600,22 +690,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
         } else {
             html = `
-                <tr class="file-item clickable-file-row" style="border-bottom: 1px solid var(--border-color);" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}" data-file-type="${file.mime_type || 'application/octet-stream'}">
+                <tr class="file-item clickable-file-row" style="border-bottom: 1px solid var(--border-color);${isDownloading ? ' opacity: 0.7;' : ''}" id="file-item-${safeId}" data-file-id="${file.file_id}" data-file-url="${fileUrl}" data-filename="${file.filename}" data-short-id="${file.short_id || ''}" data-file-type="${file.mime_type || 'application/octet-stream'}">
                     <td style="padding: 12px 16px;"><input type="checkbox" class="file-checkbox" data-file-id="${file.file_id}"></td>
                     <td style="padding: 12px 16px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary-color);"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
                             <span class="text-sm font-medium" style="color: var(--text-primary);">${file.filename}</span>
+                            ${statusBadge}
                         </div>
                     </td>
                     <td style="padding: 12px 16px;" class="text-sm text-muted">${formattedSize}</td>
                     <td style="padding: 12px 16px;" class="text-sm text-muted">${formattedDate}</td>
                     <td style="padding: 12px 16px; text-align: right;">
                         <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                            <a href="${fileUrl}" class="btn btn-ghost" style="padding: 4px 8px; height: 28px;" title="下载">
+                            <a href="${fileUrl}" class="btn btn-ghost" style="padding: 4px 8px; height: 28px;${isDownloading ? ' pointer-events: none; opacity: 0.5;' : ''}" title="下载">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             </a>
-                            <button class="btn btn-ghost copy-link-btn" style="padding: 4px 8px; height: 28px;" title="复制链接">
+                            <button class="btn btn-ghost copy-link-btn" style="padding: 4px 8px; height: 28px;" title="复制链接"${isDownloading ? ' disabled' : ''}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             </button>
                             <button class="btn btn-ghost delete" style="padding: 4px 8px; height: 28px; color: var(--danger-color);" onclick="deleteFile('${file.file_id}')" title="删除">
@@ -627,6 +718,69 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         container.insertAdjacentHTML(position, html); // Use position
+    }
+
+    // 获取下载状态文本（用于占位符显示）
+    function getDownloadStatusText(downloadStatus) {
+        if (!downloadStatus) return '待处理';
+
+        if (downloadStatus.status === 'downloading') return '下载中';
+        if (downloadStatus.status === 'retrying') return '重试中';
+        if (downloadStatus.status === 'failed') return '下载失败';
+        if (downloadStatus.status === 'pending') return '等待下载';
+
+        return downloadStatus.label || '处理中';
+    }
+
+    // 更新现有文件元素的下载状态
+    function updateFileElementStatus(fileId, downloadStatus) {
+        const safeId = fileId.replace(':', '-');
+        const element = document.getElementById(`file-item-${safeId}`);
+        if (!element) return;
+
+        const statusBadge = getStatusBadgeHtml(downloadStatus);
+        const isDownloading = downloadStatus && ['downloading', 'retrying', 'failed', 'pending'].includes(downloadStatus.status);
+
+        // 更新透明度
+        if (isDownloading) {
+            element.style.opacity = '0.7';
+        } else {
+            element.style.opacity = '1';
+        }
+
+        // 更新状态徽章
+        const existingBadge = element.querySelector('.status-badge');
+        if (existingBadge) {
+            if (statusBadge) {
+                existingBadge.outerHTML = statusBadge;
+            } else {
+                existingBadge.remove();
+            }
+        } else if (statusBadge) {
+            // 添加状态徽章
+            const sizeText = element.querySelector('.text-sm.text-muted');
+            if (sizeText) {
+                sizeText.insertAdjacentHTML('beforeend', statusBadge);
+            }
+        }
+
+        // 更新按钮禁用状态
+        const copyBtn = element.querySelector('.copy-link-btn');
+        const downloadLink = element.querySelector('a[href^="/d/"]');
+
+        if (copyBtn) {
+            copyBtn.disabled = isDownloading;
+        }
+
+        if (downloadLink) {
+            if (isDownloading) {
+                downloadLink.style.pointerEvents = 'none';
+                downloadLink.style.opacity = '0.5';
+            } else {
+                downloadLink.style.pointerEvents = '';
+                downloadLink.style.opacity = '';
+            }
+        }
     }
 
     // --- File Preview Logic ---

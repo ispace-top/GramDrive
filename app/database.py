@@ -258,7 +258,9 @@ def get_all_files(category: str | None = None, sort_by: str | None = None, sort_
         category: 文件类别，支持英文（image, video, audio, document, other）或中文（图片, 视频, 音频, 文档, 其他）
         sort_by: 排序字段（filename, filesize, upload_date）
         sort_order: 排序顺序（asc, desc）
-        local_only: 是否只返回本地已下载的文件（默认 True，只显示已下载的文件，避免访问 Telegram）
+        local_only: 是否只返回本地相关的文件（默认 True）
+                    - True: 返回已下载、下载中、重试中的文件
+                    - False: 返回所有文件
     """
     with db_lock:
         conn = get_db_connection()
@@ -270,9 +272,10 @@ def get_all_files(category: str | None = None, sort_by: str | None = None, sort_
 
             where_clauses = []
 
-            # 本地优先：只返回已下载的文件
+            # 本地模式：返回已下载 + 下载中 + 重试中的文件
             if local_only:
-                where_clauses.append("local_path IS NOT NULL AND local_path != '' AND local_path NOT LIKE '__%%'")
+                # local_path 不为空（包括成功下载的、__downloading_、__error_）
+                where_clauses.append("local_path IS NOT NULL AND local_path != ''")
 
             if category:
                 # 支持英文和中文 category 参数
@@ -324,10 +327,58 @@ def get_all_files(category: str | None = None, sort_by: str | None = None, sort_
             files = []
             for row in cursor.fetchall():
                 d = dict(row)
+                # 计算下载状态
+                d['download_status'] = _compute_download_status(d)
                 files.append(d)
             return files
         finally:
             conn.close()
+
+
+def _compute_download_status(file_info: dict) -> dict:
+    """
+    根据文件的 local_path 和 retry_count 计算下载状态。
+
+    Returns:
+        dict: {
+            "status": "completed" | "downloading" | "retrying" | "failed" | "pending",
+            "label": 显示标签,
+            "retry_count": 重试次数（仅 retrying/failed 状态）,
+            "max_retries": 最大重试次数
+        }
+    """
+    local_path = file_info.get('local_path') or ''
+    retry_count = file_info.get('retry_count') or 0
+
+    # 从配置中获取最大重试次数
+    settings = get_app_settings_from_db()
+    max_retries = settings.get('DOWNLOAD_MAX_RETRIES', 5)
+
+    if not local_path:
+        return {"status": "pending", "label": "待下载"}
+
+    if local_path.startswith('__downloading_'):
+        return {"status": "downloading", "label": "下载中"}
+
+    if local_path.startswith('__error_'):
+        if retry_count >= max_retries:
+            return {
+                "status": "failed",
+                "label": "下载失败",
+                "retry_count": retry_count,
+                "max_retries": max_retries
+            }
+        else:
+            return {
+                "status": "retrying",
+                "label": f"重试中 ({retry_count}/{max_retries})",
+                "retry_count": retry_count,
+                "max_retries": max_retries
+            }
+
+    # 有有效的 local_path，表示下载完成
+    return {"status": "completed", "label": "已下载"}
+
 
 def add_file_metadata(filename: str, file_id: str, filesize: int, mime_type: str = None) -> str:
     """
@@ -882,7 +933,7 @@ def get_local_files() -> list[dict]:
                 FROM files
                 WHERE local_path IS NOT NULL
                   AND local_path != ''
-                  AND local_path NOT LIKE '__%%'
+                  AND local_path NOT GLOB '__*'
                 ORDER BY upload_date DESC
             """)
             files = []
@@ -939,7 +990,7 @@ def clear_error_markers() -> int:
             cursor = conn.cursor()
             # 清除所有以 __ 开头的占位符标记（错误标记和下载标记）
             cursor.execute(
-                "UPDATE files SET local_path = NULL WHERE local_path LIKE '__%%'"
+                "UPDATE files SET local_path = NULL WHERE local_path GLOB '__*'"
             )
             conn.commit()
             cleared_count = cursor.rowcount
@@ -983,19 +1034,27 @@ def get_statistics() -> dict:
     Returns:
         统计数据字典
     """
+    local_filter = "local_path IS NOT NULL AND local_path != '' AND local_path NOT GLOB '__*'"
+
     with db_lock:
         conn = get_db_connection()
         try:
             cursor = conn.cursor()
 
-            # 总文件数、总大小、总下载次数
+            # 总文件数、总大小、总下载次数（全部文件 = 云端）
             cursor.execute("SELECT COUNT(*), COALESCE(SUM(filesize), 0), COALESCE(SUM(download_count), 0) FROM files")
             row = cursor.fetchone()
             total_files = row[0]
             total_size = row[1]
             total_downloads = row[2]
 
-            # 按MIME类型分类统计
+            # 本地已下载文件数、大小
+            cursor.execute(f"SELECT COUNT(*), COALESCE(SUM(filesize), 0) FROM files WHERE {local_filter}")
+            row = cursor.fetchone()
+            local_files_count = row[0]
+            local_files_size = row[1]
+
+            # 按MIME类型分类统计（全部文件）
             cursor.execute("""
                 SELECT
                     CASE
@@ -1015,6 +1074,27 @@ def get_statistics() -> dict:
             by_type = {}
             for row in cursor.fetchall():
                 by_type[row[0]] = {"count": row[1], "size": row[2]}
+
+            # 按MIME类型分类统计（仅本地文件）
+            cursor.execute(f"""
+                SELECT
+                    CASE
+                        WHEN mime_type LIKE 'image/%' THEN 'image'
+                        WHEN mime_type LIKE 'video/%' THEN 'video'
+                        WHEN mime_type LIKE 'audio/%' THEN 'audio'
+                        WHEN mime_type LIKE 'application/pdf' THEN 'pdf'
+                        WHEN mime_type LIKE 'text/%' THEN 'text'
+                        ELSE 'other'
+                    END as type,
+                    COUNT(*) as count,
+                    COALESCE(SUM(filesize), 0) as size
+                FROM files
+                WHERE mime_type IS NOT NULL AND {local_filter}
+                GROUP BY type
+            """)
+            local_by_type = {}
+            for row in cursor.fetchall():
+                local_by_type[row[0]] = {"count": row[1], "size": row[2]}
 
             # 最近7天上传趋势
             cursor.execute("""
@@ -1047,10 +1127,6 @@ def get_statistics() -> dict:
                     "filesize": row[4]
                 })
 
-            # 本地已下载文件数
-            cursor.execute("SELECT COUNT(*) FROM files WHERE local_path IS NOT NULL AND local_path != ''")
-            local_files_count = cursor.fetchone()[0]
-
             # 标签总数
             cursor.execute("SELECT COUNT(DISTINCT tag) FROM file_tags")
             total_tags = cursor.fetchone()[0]
@@ -1060,9 +1136,11 @@ def get_statistics() -> dict:
                 "total_size": total_size,
                 "total_downloads": total_downloads,
                 "by_type": by_type,
+                "local_by_type": local_by_type,
                 "recent_uploads": recent_uploads,
                 "top_downloads": top_downloads,
                 "local_files_count": local_files_count,
+                "local_files_size": local_files_size,
                 "total_tags": total_tags
             }
         finally:

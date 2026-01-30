@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import time
 import uuid
@@ -8,6 +9,7 @@ import httpx
 
 from .. import database
 from ..core.logging_config import get_logger
+from ..events import file_update_queue
 from ..services.telegram_service import TelegramService
 
 logger = get_logger(__name__)
@@ -77,6 +79,7 @@ class DownloadService:
             'min_size': settings.get('DOWNLOAD_MIN_SIZE', 0), # Default 0MB
             'threads': settings.get('DOWNLOAD_THREADS', 3), # Default 3 threads
             'polling_interval': settings.get('DOWNLOAD_POLLING_INTERVAL', 60), # Default 60 seconds
+            'max_retries': settings.get('DOWNLOAD_MAX_RETRIES', 5), # Default 5 retries
         }
 
     async def _fetch_and_queue_files_for_download(self, settings: dict[str, Any]):
@@ -99,8 +102,9 @@ class DownloadService:
                     retry_count = file_info.get('retry_count', 0)
                     last_retry_time_str = file_info.get('last_retry_time')
 
-                    # 最大重试次数：5次
-                    if retry_count >= 5:
+                    # 使用配置的最大重试次数
+                    max_retries = settings.get('max_retries', 5)
+                    if retry_count >= max_retries:
                         logger.debug(f"【下载服务】文件已达最大重试次数，跳过。文件名: {file_info['filename']}，重试次数: {retry_count}")
                         continue
 
@@ -264,6 +268,14 @@ class DownloadService:
                             # 删除不完整的文件
                             if os.path.exists(local_filepath):
                                 os.remove(local_filepath)
+
+                            # 广播文件状态更新
+                            updated_file = database.get_file_by_id(file_id)
+                            if updated_file:
+                                await file_update_queue.publish(json.dumps({
+                                    "action": "update",
+                                    **updated_file
+                                }))
                         else:
                             relative_local_path = os.path.relpath(local_filepath, start=settings['download_dir'])
                             result = database.update_local_path(file_id, relative_local_path)
@@ -273,6 +285,14 @@ class DownloadService:
                                     "task_id": task_id, "file_id": file_id, "filename": filename,
                                     "status": "completed"
                                 })
+
+                                # 广播文件状态更新
+                                updated_file = database.get_file_by_id(file_id)
+                                if updated_file:
+                                    await file_update_queue.publish(json.dumps({
+                                        "action": "update",
+                                        **updated_file
+                                    }))
                             else:
                                 logger.error(f"【下载服务】数据库更新失败，标记为错误。文件名: {filename}，file_id: {file_id}")
                                 database.update_local_path(file_id, f"__error_db_update")
@@ -281,6 +301,14 @@ class DownloadService:
                                     "task_id": task_id, "file_id": file_id, "filename": filename,
                                     "status": "error", "error": "数据库更新失败"
                                 })
+
+                                # 广播文件状态更新
+                                updated_file = database.get_file_by_id(file_id)
+                                if updated_file:
+                                    await file_update_queue.publish(json.dumps({
+                                        "action": "update",
+                                        **updated_file
+                                    }))
                     else:
                         logger.error(f"【下载服务】文件下载失败，标记为错误。文件名: {filename}，路径: {local_filepath}")
                         database.update_local_path(file_id, f"__error_download_failed")
@@ -292,6 +320,14 @@ class DownloadService:
                         # 清理可能存在的不完整文件
                         if os.path.exists(local_filepath):
                             os.remove(local_filepath)
+
+                        # 广播文件状态更新
+                        updated_file = database.get_file_by_id(file_id)
+                        if updated_file:
+                            await file_update_queue.publish(json.dumps({
+                                "action": "update",
+                                **updated_file
+                            }))
 
                 except Exception as e:
                     logger.error("下载文件 %s (ID: %s) 失败: %s", filename, file_id, e)
@@ -308,6 +344,14 @@ class DownloadService:
                             os.remove(local_filepath)
                         except Exception:
                             pass
+
+                    # 广播文件状态更新
+                    updated_file = database.get_file_by_id(file_id)
+                    if updated_file:
+                        await file_update_queue.publish(json.dumps({
+                            "action": "update",
+                            **updated_file
+                        }))
 
         tasks = []
         while not self.download_queue.empty():
