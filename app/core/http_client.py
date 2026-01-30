@@ -136,9 +136,17 @@ async def lifespan(app: FastAPI):
 
     # 2. 创建共享的 httpx.AsyncClient
     global http_client
-    limits = httpx.Limits(max_connections=500, max_keepalive_connections=100)  # 增加连接池大小
-    http_client = httpx.AsyncClient(timeout=300.0, limits=limits)
-    logger.info("共享的 HTTP 客户端已创建")
+    limits = httpx.Limits(max_connections=500, max_keepalive_connections=100)
+    # 增加超时时间以支持大文件下载（2GB @ 1MB/s = 约35分钟）
+    # 使用更长的超时时间避免大文件下载中断
+    timeout = httpx.Timeout(
+        connect=30.0,      # 连接超时 30秒
+        read=3600.0,       # 读取超时 60分钟（支持大文件慢速下载）
+        write=300.0,       # 写入超时 5分钟
+        pool=10.0          # 连接池超时 10秒
+    )
+    http_client = httpx.AsyncClient(timeout=timeout, limits=limits)
+    logger.info("共享的 HTTP 客户端已创建（支持大文件下载）")
 
     # 3. 启动 Telegram Bot（仅在 BOT_TOKEN + CHANNEL_NAME 都存在时）
     if app.state.bot_ready:

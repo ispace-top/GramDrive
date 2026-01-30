@@ -4,9 +4,19 @@
 
 {% block content %}
 <div class="container">
-    <div class="page-header">
-        <h1>下载管理</h1>
-        <p class="text-muted">管理自动下载设置和本地文件</p>
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1>下载管理</h1>
+            <p class="text-muted">管理自动下载设置和本地文件</p>
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="openSettingsModal()" style="height: 40px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 1v6m0 6v6m5.2-13.2l-1.4 1.4m-8-1.4l1.4 1.4m8 11.6l-1.4-1.4m-8 1.4l1.4-1.4"></path>
+                <path d="M1 12h6m6 0h6"></path>
+            </svg>
+            下载设置
+        </button>
     </div>
 
     <div class="card" style="margin-top: 24px;">
@@ -68,13 +78,16 @@
             <div id="localFilesList" style="display: none;"></div>
         </div>
     </div>
+</div>
 
-    <!-- 自动下载配置 -->
-    <div class="card" style="margin-top: 24px;">
-        <div class="card-header">
-            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">自动下载配置</h2>
+<!-- 设置模态框 -->
+<div id="settingsModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto; background: var(--bg-surface); border-radius: var(--radius-lg); padding: 0;">
+        <div style="padding: 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 600;">自动下载设置</h2>
+            <button type="button" class="close-button" onclick="closeSettingsModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-secondary); line-height: 1;">&times;</button>
         </div>
-        <div class="card-body">
+        <div style="padding: 24px;">
             <form id="autoDownloadForm">
                 <div class="form-group">
                     <label class="form-label">
@@ -86,7 +99,7 @@
 
                 <div class="form-group">
                     <label class="form-label">文件类型</label>
-                    <div style="display: flex; gap: 16px; margin-top: 8px;">
+                    <div style="display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap;">
                         <label style="display: flex; align-items: center; cursor: pointer;">
                             <input type="checkbox" value="all" class="fileTypeCheckbox" style="margin-right: 6px;">
                             全部
@@ -135,9 +148,10 @@
                     <p class="form-hint">下载失败后的最大重试次数（设置为 5 表示最多重试 5 次）</p>
                 </div>
 
-                <div style="display: flex; gap: 12px;">
-                    <button type="submit" class="btn btn-primary">保存配置</button>
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">保存配置</button>
                     <button type="button" class="btn btn-secondary" onclick="loadConfig()">重置</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">取消</button>
                 </div>
             </form>
         </div>
@@ -257,6 +271,35 @@
     display: flex;
     gap: 8px;
     align-items: center;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal .modal-content {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 </style>
 
@@ -439,6 +482,22 @@ document.getElementById('autoDownloadForm').addEventListener('submit', async (e)
 function showToast(message, type) {
     alert(message);
 }
+
+function openSettingsModal() {
+    document.getElementById('settingsModal').style.display = 'flex';
+}
+
+function closeSettingsModal() {
+    document.getElementById('settingsModal').style.display = 'none';
+}
+
+// 点击模态框外部关闭
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('settingsModal');
+    if (e.target === modal) {
+        closeSettingsModal();
+    }
+});
 
 // 页面加载时初始化
 loadConfig();

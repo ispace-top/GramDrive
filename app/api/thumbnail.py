@@ -56,27 +56,49 @@ async def get_thumbnail(
         )
 
     # 缓存未命中，生成缩略图
-    try:
-        telegram_service = get_telegram_service()
-    except Exception as e:
-        raise http_error(503, "Telegram服务不可用", code="telegram_unavailable") from e
+    # 优先使用本地文件生成缩略图（如果已下载）
+    download_url = None
+    local_file_path = None
 
-    # 获取原图下载链接
-    try:
-        _, real_file_id = file_meta["file_id"].split(":", 1)
-    except ValueError:
-        real_file_id = file_meta["file_id"]
+    if file_meta.get('local_path'):
+        local_path_value = file_meta['local_path']
+        # 跳过占位符标记（__downloading_, __error_）
+        if not local_path_value.startswith('__'):
+            from ..core.config import get_app_settings
+            import os
+            settings = get_app_settings()
+            download_dir = settings.get('DOWNLOAD_DIR', '/app/downloads')
+            full_local_path = os.path.join(download_dir, local_path_value)
 
-    download_url = await telegram_service.get_download_url(real_file_id)
-    if not download_url:
-        raise http_error(404, "无法获取文件下载链接", code="download_url_failed")
+            if os.path.exists(full_local_path):
+                local_file_path = full_local_path
+                logger.info(f"【缩略图】使用本地文件生成缩略图: {file_meta['filename']}")
+
+    # 如果本地文件不存在，从 Telegram 获取
+    if not local_file_path:
+        logger.info(f"【缩略图】从 Telegram 获取文件生成缩略图: {file_meta['filename']}")
+        try:
+            telegram_service = get_telegram_service()
+        except Exception as e:
+            raise http_error(503, "Telegram服务不可用", code="telegram_unavailable") from e
+
+        # 获取原图下载链接
+        try:
+            _, real_file_id = file_meta["file_id"].split(":", 1)
+        except ValueError:
+            real_file_id = file_meta["file_id"]
+
+        download_url = await telegram_service.get_download_url(real_file_id)
+        if not download_url:
+            raise http_error(404, "无法获取文件下载链接", code="download_url_failed")
 
     # 生成缩略图
     thumbnail_data = await thumbnail_service.generate_thumbnail(
         file_meta["file_id"],
-        download_url,
+        download_url or local_file_path,
         size,
-        client
+        client,
+        is_local_file=local_file_path is not None
     )
 
     if not thumbnail_data:

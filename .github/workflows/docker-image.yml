@@ -1,10 +1,11 @@
-name: Build && Push Multi-Platform Docker image
+name: 构建并推送 Docker 镜像
 
 on:
   release:
-    types: [created]
+    types: [published]
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,37 +15,66 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: 检出代码
+        uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+      - name: 提取版本信息
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"  # 移除 v 前缀
+          else
+            VERSION=$(grep -oP '__version__ = "\K[^"]+' app/version.py)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 构建版本: $VERSION"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      - name: 设置 QEMU
+        uses: docker/setup-qemu-action@v3
 
-      - name: Log in to Docker Hub
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: 生成 Docker 元数据
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: ${{ secrets.DOCKER_USERNAME }}/gramdrive
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=tag
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.event_name == 'release' }}
+            type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
+            type=semver,pattern={{major}},enable=${{ github.event_name == 'release' }}
+          labels: |
+            org.opencontainers.image.title=GramDrive
+            org.opencontainers.image.description=基于 Telegram 的永久在线私有云存储和媒体中心
+            org.opencontainers.image.vendor=ispace
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
 
-      - name: Build and push multi-platform Docker image
-        uses: docker/build-push-action@v4
+      - name: 构建并推送多平台 Docker 镜像
+        uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+
+      - name: 构建成功通知
+        run: |
+          echo "✅ Docker 镜像构建成功！"
+          echo "🏷️  版本: ${{ steps.version.outputs.version }}"
+          echo "📦 镜像: ${{ secrets.DOCKER_USERNAME }}/gramdrive"
+          echo "🔖 Tags: ${{ steps.meta.outputs.tags }}"

@@ -6,6 +6,7 @@ from starlette.templating import Jinja2Templates
 
 from . import database
 from .core.config import get_app_settings
+from .version import __version__, __author__, __email__, __github__, __repository__, __license__
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -115,3 +116,28 @@ async def downloads_page(request: Request):
     提供下载管理页面。
     """
     return templates.TemplateResponse("downloads.html", {"request": request, "cfg": _page_cfg(request)})
+
+
+@router.get("/about", response_class=HTMLResponse)
+async def about_page(request: Request):
+    """
+    提供关于我们页面。
+    """
+    return templates.TemplateResponse("about.html", {
+        "request": request,
+        "version": __version__,
+        "author": __author__,
+        "email": __email__,
+        "github": __github__,
+        "repository": __repository__,
+        "license": __license__,
+        "cfg": _page_cfg(request)
+    })
+
+
+@router.get("/guide", response_class=HTMLResponse)
+async def guide_page(request: Request):
+    """
+    提供使用引导页面。
+    """
+    return templates.TemplateResponse("guide.html", {"request": request, "cfg": _page_cfg(request)})

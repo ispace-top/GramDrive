@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}关于我们 - Gram Drive{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header" style="text-align: center; padding: 48px 24px;">
+        <div style="display: flex; justify-content: center; margin-bottom: 32px;">
+            <img src="/static/images/logo.png" alt="Gram Drive Logo" style="width: 120px; height: 120px; border-radius: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);">
+        </div>
+        <h1 style="font-size: 48px; margin-bottom: 16px; background: linear-gradient(135deg, var(--primary-color) 0%, #667eea 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            Gram Drive
+        </h1>
+        <p style="font-size: 20px; color: var(--text-secondary); margin-bottom: 8px;">基于 Telegram 的永久在线私有云存储和媒体中心</p>
+        <p style="font-size: 14px; color: var(--text-muted);">版本 {{ version }}</p>
+    </div>
+
+    <div class="card" style="max-width: 800px; margin: 0 auto 24px;">
+        <div class="card-header">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 600;">项目介绍</h2>
+        </div>
+        <div class="card-body">
+            <p style="line-height: 1.8; color: var(--text-secondary); margin-bottom: 16px;">
+                GramDrive 将 Telegram 账号转变为功能丰富、永久在线的私有云存储和媒体中心。利用 Telegram 的无限云存储空间，提供智能的文件管理、自动下载、缩略图生成等强大功能。
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 24px;">
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: var(--primary-color); margin-bottom: 4px;">∞</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">无限存储空间</div>
+                </div>
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: var(--primary-color); margin-bottom: 4px;">⚡</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">智能自动下载</div>
+                </div>
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: var(--primary-color); margin-bottom: 4px;">🎨</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">图床模式</div>
+                </div>
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: var(--primary-color); margin-bottom: 4px;">🔒</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">安全可靠</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; max-width: 800px; margin: 0 auto 24px;">
+        <div class="card">
+            <div class="card-header">
+                <h2 style="margin: 0; font-size: 18px; font-weight: 600;">核心特性</h2>
+            </div>
+            <div class="card-body">
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    <li style="padding: 12px 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2" style="margin-right: 12px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span style="color: var(--text-secondary);">多格式文件支持与智能分类</span>
+                    </li>
+                    <li style="padding: 12px 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2" style="margin-right: 12px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span style="color: var(--text-secondary);">自动缩略图生成（小中大三种尺寸）</span>
+                    </li>
+                    <li style="padding: 12px 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2" style="margin-right: 12px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span style="color: var(--text-secondary);">智能自动下载与重试机制</span>
+                    </li>
+                    <li style="padding: 12px 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2" style="margin-right: 12px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span style="color: var(--text-secondary);">本地文件优先策略</span>
+                    </li>
+                    <li style="padding: 12px 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2" style="margin-right: 12px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span style="color: var(--text-secondary);">现代化响应式 UI 设计</span>
+                    </li>
+                    <li style="padding: 12px 0; display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success-color)" stroke-width="2" style="margin-right: 12px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span style="color: var(--text-secondary);">PicGo API 集成支持</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 style="margin: 0; font-size: 18px; font-weight: 600;">技术栈</h2>
+            </div>
+            <div class="card-body">
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <span style="padding: 6px 12px; background: var(--bg-surface-hover); border-radius: 16px; font-size: 13px; color: var(--text-secondary);">Python 3.11+</span>
+                    <span style="padding: 6px 12px; background: var(--bg-surface-hover); border-radius: 16px; font-size: 13px; color: var(--text-secondary);">FastAPI</span>
+                    <span style="padding: 6px 12px; background: var(--bg-surface-hover); border-radius: 16px; font-size: 13px; color: var(--text-secondary);">SQLite</span>
+                    <span style="padding: 6px 12px; background: var(--bg-surface-hover); border-radius: 16px; font-size: 13px; color: var(--text-secondary);">Telegram Bot API</span>
+                    <span style="padding: 6px 12px; background: var(--bg-surface-hover); border-radius: 16px; font-size: 13px; color: var(--text-secondary);">httpx</span>
+                    <span style="padding: 6px 12px; background: var(--bg-surface-hover); border-radius: 16px; font-size: 13px; color: var(--text-secondary);">Docker</span>
+                    <span style="padding: 6px 12px; background: var(--bg-surface-hover); border-radius: 16px; font-size: 13px; color: var(--text-secondary);">Uvicorn</span>
+                    <span style="padding: 6px 12px; background: var(--bg-surface-hover); border-radius: 16px; font-size: 13px; color: var(--text-secondary);">PIL/Pillow</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 800px; margin: 0 auto 24px;">
+        <div class="card-header">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">开源信息</h2>
+        </div>
+        <div class="card-body">
+            <div style="display: grid; gap: 16px;">
+                <div style="display: flex; align-items: center; padding: 12px; background: var(--bg-surface-hover); border-radius: 8px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="color: var(--text-secondary); margin-right: 12px;">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">GitHub 仓库</div>
+                        <a href="{{ repository }}" target="_blank" style="color: var(--primary-color); text-decoration: none; font-size: 14px;">{{ repository }}</a>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; padding: 12px; background: var(--bg-surface-hover); border-radius: 8px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-secondary); margin-right: 12px;">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">作者</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">
+                            <a href="{{ github }}" target="_blank" style="color: var(--primary-color); text-decoration: none;">{{ author }}</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; padding: 12px; background: var(--bg-surface-hover); border-radius: 8px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-secondary); margin-right: 12px;">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">联系邮箱</div>
+                        <a href="mailto:{{ email }}" style="color: var(--primary-color); text-decoration: none; font-size: 14px;">{{ email }}</a>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; padding: 12px; background: var(--bg-surface-hover); border-radius: 8px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-secondary); margin-right: 12px;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">开源协议</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">{{ license }} License</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 800px; margin: 0 auto 48px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%); border: 1px solid var(--primary-color);">
+        <div class="card-body" style="text-align: center; padding: 32px 24px;">
+            <h3 style="margin: 0 0 16px 0; font-size: 20px;">喜欢这个项目？</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6;">
+                如果 GramDrive 对您有帮助，欢迎在 GitHub 上给我们一个 ⭐ Star！<br>
+                您的支持是我们持续改进的动力。
+            </p>
+            <a href="{{ repository }}" target="_blank" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                前往 GitHub
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

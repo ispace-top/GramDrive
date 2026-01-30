@@ -13,7 +13,7 @@ from ..core.config import get_app_settings
 from ..core.logging_config import get_logger
 
 # Telegram Bot API 对通过 getFile 方法下载的文件有 20MB 的限制。
-# tgState 将文件按 19.5MB 分块上传，并通过 .manifest 文件记录原始文件名与分块列表。
+# GramDrive 将文件按 19.5MB 分块上传，并通过 .manifest 文件记录原始文件名与分块列表。
 CHUNK_SIZE_BYTES = int(19.5 * 1024 * 1024)
 
 logger = get_logger(__name__)

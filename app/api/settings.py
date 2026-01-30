@@ -203,7 +203,7 @@ async def verify_channel(payload: VerifyRequest):
     req = HTTPXRequest(connect_timeout=10.0, read_timeout=10.0, write_timeout=10.0)
     bot = telegram.Bot(token=token, request=req)
     try:
-        msg = await bot.send_message(chat_id=channel, text="tgState channel check")
+        msg = await bot.send_message(chat_id=channel, text="GramDrive channel check")
         with contextlib.suppress(Exception):
             await bot.delete_message(chat_id=channel, message_id=msg.message_id)
         return {"status": "ok", "available": True}

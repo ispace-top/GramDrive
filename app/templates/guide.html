@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}使用引导 - Gram Drive{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>使用引导</h1>
+        <p class="text-muted">详细的使用说明和常见问题解决方案</p>
+    </div>
+
+    <!-- 快速开始 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header" style="background: linear-gradient(135deg, var(--primary-color) 0%, #667eea 100%); color: white;">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 600;">🚀 快速开始</h2>
+        </div>
+        <div class="card-body">
+            <div style="display: grid; gap: 24px;">
+                <div>
+                    <h3 style="font-size: 18px; margin-bottom: 12px; color: var(--primary-color);">1. 创建 Telegram Bot</h3>
+                    <ol style="line-height: 1.8; color: var(--text-secondary); padding-left: 24px;">
+                        <li>在 Telegram 中搜索 <code style="background: var(--bg-surface-hover); padding: 2px 6px; border-radius: 4px;">@BotFather</code></li>
+                        <li>发送 <code style="background: var(--bg-surface-hover); padding: 2px 6px; border-radius: 4px;">/newbot</code> 创建新机器人</li>
+                        <li>按提示设置机器人名称和用户名</li>
+                        <li>获取 Bot Token（类似：<code style="background: var(--bg-surface-hover); padding: 2px 6px; border-radius: 4px;">123456:ABC-DEF1234...</code>）</li>
+                    </ol>
+                </div>
+
+                <div>
+                    <h3 style="font-size: 18px; margin-bottom: 12px; color: var(--primary-color);">2. 创建存储频道</h3>
+                    <ol style="line-height: 1.8; color: var(--text-secondary); padding-left: 24px;">
+                        <li>在 Telegram 中创建一个新频道（推荐设为私有）</li>
+                        <li>将刚才创建的 Bot 添加为频道管理员</li>
+                        <li>获取频道 ID：
+                            <ul style="margin-top: 8px;">
+                                <li>方法 1：使用 <code style="background: var(--bg-surface-hover); padding: 2px 6px; border-radius: 4px;">@username_to_id_bot</code> 获取</li>
+                                <li>方法 2：频道用户名格式（如：<code style="background: var(--bg-surface-hover); padding: 2px 6px; border-radius: 4px;">@mychannel</code>）</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+
+                <div>
+                    <h3 style="font-size: 18px; margin-bottom: 12px; color: var(--primary-color);">3. 配置系统</h3>
+                    <ol style="line-height: 1.8; color: var(--text-secondary); padding-left: 24px;">
+                        <li>进入<a href="/settings" style="color: var(--primary-color); text-decoration: none;"> 系统设置 </a>页面</li>
+                        <li>填入 Bot Token 和频道名称</li>
+                        <li>设置访问密码（可选，建议设置）</li>
+                        <li>配置 PicGo API Key（可选，用于图床功能）</li>
+                        <li>点击"保存并应用配置"</li>
+                    </ol>
+                </div>
+
+                <div>
+                    <h3 style="font-size: 18px; margin-bottom: 12px; color: var(--primary-color);">4. 开始使用</h3>
+                    <p style="line-height: 1.8; color: var(--text-secondary);">
+                        配置完成后，您就可以：
+                    </p>
+                    <ul style="line-height: 1.8; color: var(--text-secondary); padding-left: 24px;">
+                        <li>在<a href="/" style="color: var(--primary-color); text-decoration: none;"> 文件管理 </a>页面上传和管理文件</li>
+                        <li>在<a href="/image_hosting" style="color: var(--primary-color); text-decoration: none;"> 图床模式 </a>快速上传和分享图片</li>
+                        <li>在<a href="/downloads" style="color: var(--primary-color); text-decoration: none;"> 下载管理 </a>配置自动下载规则</li>
+                        <li>在<a href="/stats" style="color: var(--primary-color); text-decoration: none;"> 统计仪表板 </a>查看存储使用情况</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 功能说明 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 600;">📚 功能说明</h2>
+        </div>
+        <div class="card-body">
+            <div style="display: grid; gap: 24px;">
+                <div>
+                    <h3 style="font-size: 16px; margin-bottom: 12px; display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; color: var(--primary-color);">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                            <polyline points="13 2 13 9 20 9"></polyline>
+                        </svg>
+                        文件管理
+                    </h3>
+                    <ul style="line-height: 1.8; color: var(--text-secondary); padding-left: 28px;">
+                        <li><strong>上传文件：</strong>拖拽文件到上传区域或点击选择文件</li>
+                        <li><strong>分类筛选：</strong>按文件类型（图片、视频、音频、文档等）筛选</li>
+                        <li><strong>搜索：</strong>实时搜索文件名</li>
+                        <li><strong>排序：</strong>按文件名、大小、上传日期排序</li>
+                        <li><strong>预览：</strong>点击文件卡片预览（支持图片、视频、PDF、文本）</li>
+                        <li><strong>批量操作：</strong>选中多个文件后可批量删除或复制链接</li>
+                        <li><strong>本地/云端切换：</strong>查看已下载的本地文件或云端所有文件</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 style="font-size: 16px; margin-bottom: 12px; display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; color: var(--primary-color);">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        图床模式
+                    </h3>
+                    <ul style="line-height: 1.8; color: var(--text-secondary); padding-left: 28px;">
+                        <li><strong>快速上传：</strong>专为图片分享优化的上传界面</li>
+                        <li><strong>自动缩略图：</strong>自动生成小、中、大三种尺寸缩略图</li>
+                        <li><strong>瀑布流展示：</strong>美观的图片展示方式</li>
+                        <li><strong>一键复制链接：</strong>快速获取图片外链</li>
+                        <li><strong>PicGo 集成：</strong>支持 PicGo 客户端直接上传</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 style="font-size: 16px; margin-bottom: 12px; display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; color: var(--primary-color);">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        自动下载
+                    </h3>
+                    <ul style="line-height: 1.8; color: var(--text-secondary); padding-left: 28px;">
+                        <li><strong>类型过滤：</strong>选择自动下载的文件类型（全部、图片、视频、音频、文档）</li>
+                        <li><strong>大小限制：</strong>设置最大和最小文件大小范围</li>
+                        <li><strong>下载目录：</strong>自定义本地存储路径</li>
+                        <li><strong>重试机制：</strong>下载失败自动重试（指数退避策略）</li>
+                        <li><strong>实时监控：</strong>查看正在下载的任务和进度</li>
+                        <li><strong>本地文件管理：</strong>查看已下载文件并管理存储空间</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 style="font-size: 16px; margin-bottom: 12px; display: flex; align-items: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; color: var(--primary-color);">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                        统计仪表板
+                    </h3>
+                    <ul style="line-height: 1.8; color: var(--text-secondary); padding-left: 28px;">
+                        <li><strong>存储概览：</strong>总文件数、总大小、下载次数统计</li>
+                        <li><strong>类型分析：</strong>按文件类型统计数量和大小</li>
+                        <li><strong>上传趋势：</strong>近 7 天上传活动趋势图</li>
+                        <li><strong>热门文件：</strong>下载次数 Top 10 排行</li>
+                        <li><strong>本地统计：</strong>本地已下载文件的统计信息</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 常见问题 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 600;">❓ 常见问题</h2>
+        </div>
+        <div class="card-body">
+            <div style="display: grid; gap: 20px;">
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                    <h4 style="margin: 0 0 8px 0; font-size: 16px; color: var(--text-primary);">Q: Bot 启动失败，显示"冲突"错误？</h4>
+                    <p style="margin: 0; line-height: 1.8; color: var(--text-secondary);">
+                        <strong>A:</strong> 可能的原因和解决方案：<br>
+                        1. <strong>多个实例运行：</strong>检查是否有多个容器或进程在运行同一个 Bot<br>
+                        2. <strong>旧连接未释放：</strong>停止所有容器，等待 10-30 秒后重新启动<br>
+                        3. <strong>其他地方使用：</strong>确保 Bot Token 没有在其他地方（如开发环境）使用<br>
+                        4. <strong>重置 Bot：</strong>在 BotFather 中使用 <code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">/revoke</code> 重新生成 Token
+                    </p>
+                </div>
+
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                    <h4 style="margin: 0 0 8px 0; font-size: 16px; color: var(--text-primary);">Q: 无法获取频道 ID？</h4>
+                    <p style="margin: 0; line-height: 1.8; color: var(--text-secondary);">
+                        <strong>A:</strong> 获取频道 ID 的方法：<br>
+                        1. <strong>使用 Bot：</strong>在 Telegram 搜索 <code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">@username_to_id_bot</code>，转发频道消息获取<br>
+                        2. <strong>使用用户名：</strong>如果频道有公开用户名，直接使用 <code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">@username</code> 格式<br>
+                        3. <strong>Web 版查看：</strong>在 Telegram Web 版打开频道，URL 中的数字即为 ID（格式：<code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">-1001234567890</code>）
+                    </p>
+                </div>
+
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                    <h4 style="margin: 0 0 8px 0; font-size: 16px; color: var(--text-primary);">Q: 上传大文件失败？</h4>
+                    <p style="margin: 0; line-height: 1.8; color: var(--text-secondary);">
+                        <strong>A:</strong> 大文件上传注意事项：<br>
+                        1. <strong>文件大小限制：</strong>单个文件最大 2GB（Telegram 限制）<br>
+                        2. <strong>自动分块：</strong>超过 19.5MB 的文件会自动分块上传<br>
+                        3. <strong>网络稳定：</strong>确保网络连接稳定，上传大文件可能需要较长时间<br>
+                        4. <strong>超时设置：</strong>Docker 部署时可增大超时时间（环境变量或配置）
+                    </p>
+                </div>
+
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                    <h4 style="margin: 0 0 8px 0; font-size: 16px; color: var(--text-primary);">Q: 下载文件一直显示"下载中"不完成？</h4>
+                    <p style="margin: 0; line-height: 1.8; color: var(--text-secondary);">
+                        <strong>A:</strong> 可能的原因和解决方案：<br>
+                        1. <strong>下载卡住：</strong>检查服务日志，查看是否有错误信息<br>
+                        2. <strong>存储空间不足：</strong>检查服务器磁盘空间是否充足<br>
+                        3. <strong>网络问题：</strong>确保服务器可以访问 Telegram CDN<br>
+                        4. <strong>清除错误标记：</strong>在下载管理页面使用"清除错误"功能重试<br>
+                        5. <strong>重启服务：</strong>重启 Docker 容器或应用服务
+                    </p>
+                </div>
+
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                    <h4 style="margin: 0 0 8px 0; font-size: 16px; color: var(--text-primary);">Q: 缩略图加载失败或显示错误？</h4>
+                    <p style="margin: 0; line-height: 1.8; color: var(--text-secondary);">
+                        <strong>A:</strong> 缩略图问题排查：<br>
+                        1. <strong>清除缓存：</strong>在图床模式或文件管理中强制刷新<br>
+                        2. <strong>权限问题：</strong>确保 <code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">/app/data/thumbnails</code> 目录有写入权限<br>
+                        3. <strong>图片格式：</strong>确保图片格式被 PIL 支持（常见格式都支持）<br>
+                        4. <strong>内存不足：</strong>生成大图缩略图需要足够内存
+                    </p>
+                </div>
+
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                    <h4 style="margin: 0 0 8px 0; font-size: 16px; color: var(--text-primary);">Q: PicGo 上传失败？</h4>
+                    <p style="margin: 0; line-height: 1.8; color: var(--text-secondary);">
+                        <strong>A:</strong> PicGo 配置检查：<br>
+                        1. <strong>API Key：</strong>确保在系统设置中配置了正确的 PicGo API Key<br>
+                        2. <strong>URL 配置：</strong>PicGo 中配置正确的服务器地址（<code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">http://your-domain/api/upload</code>）<br>
+                        3. <strong>Header 配置：</strong>添加请求头 <code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">x-api-key: your_api_key</code><br>
+                        4. <strong>网络访问：</strong>确保 PicGo 可以访问服务器地址
+                    </p>
+                </div>
+
+                <div style="padding: 16px; background: var(--bg-surface-hover); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                    <h4 style="margin: 0 0 8px 0; font-size: 16px; color: var(--text-primary);">Q: 数据库损坏或丢失数据？</h4>
+                    <p style="margin: 0; line-height: 1.8; color: var(--text-secondary);">
+                        <strong>A:</strong> 数据保护建议：<br>
+                        1. <strong>定期备份：</strong>定期备份 <code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">/app/data</code> 目录<br>
+                        2. <strong>Volume 挂载：</strong>确保 Docker 正确挂载了数据卷<br>
+                        3. <strong>优雅关闭：</strong>使用 <code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">docker stop</code> 而非 <code style="background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;">docker kill</code><br>
+                        4. <strong>恢复数据：</strong>Telegram 频道中的文件永久保存，可重新扫描恢复元数据
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 高级技巧 -->
+    <div class="card" style="margin-bottom: 48px;">
+        <div class="card-header">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 600;">💡 高级技巧</h2>
+        </div>
+        <div class="card-body">
+            <div style="display: grid; gap: 16px;">
+                <div>
+                    <h4 style="font-size: 16px; margin-bottom: 8px; color: var(--primary-color);">使用 Nginx 反向代理</h4>
+                    <p style="line-height: 1.8; color: var(--text-secondary); margin-bottom: 12px;">
+                        配置 Nginx 反向代理可以添加 HTTPS 支持、缓存优化等功能：
+                    </p>
+                    <pre style="background: var(--bg-surface); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.5;"><code>server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}</code></pre>
+                </div>
+
+                <div>
+                    <h4 style="font-size: 16px; margin-bottom: 8px; color: var(--primary-color);">Docker Compose 部署</h4>
+                    <p style="line-height: 1.8; color: var(--text-secondary); margin-bottom: 12px;">
+                        使用 Docker Compose 简化部署和管理：
+                    </p>
+                    <pre style="background: var(--bg-surface); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.5;"><code>version: '3.8'
+services:
+  gramdrive:
+    image: ispacetop/gramdrive:latest
+    container_name: gramdrive
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./downloads:/app/downloads
+    environment:
+      - TZ=Asia/Shanghai</code></pre>
+                </div>
+
+                <div>
+                    <h4 style="font-size: 16px; margin-bottom: 8px; color: var(--primary-color);">自动备份脚本</h4>
+                    <p style="line-height: 1.8; color: var(--text-secondary); margin-bottom: 12px;">
+                        定期备份数据库和配置文件：
+                    </p>
+                    <pre style="background: var(--bg-surface); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.5;"><code>#!/bin/bash
+# 备份到指定目录
+BACKUP_DIR="/backup/gramdrive"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# 创建备份目录
+mkdir -p $BACKUP_DIR
+
+# 备份数据库
+docker cp gramdrive:/app/data/file_metadata.db \
+    $BACKUP_DIR/file_metadata_$DATE.db
+
+# 压缩备份（可选）
+tar -czf $BACKUP_DIR/backup_$DATE.tar.gz \
+    $BACKUP_DIR/file_metadata_$DATE.db
+
+# 删除 30 天前的备份
+find $BACKUP_DIR -name "backup_*.tar.gz" -mtime +30 -delete</code></pre>
+                </div>
+
+                <div>
+                    <h4 style="font-size: 16px; margin-bottom: 8px; color: var(--primary-color);">性能优化建议</h4>
+                    <ul style="line-height: 1.8; color: var(--text-secondary); padding-left: 24px;">
+                        <li>使用 SSD 存储提升下载和缩略图生成速度</li>
+                        <li>增大 Docker 容器内存限制（推荐至少 512MB）</li>
+                        <li>配置 CDN 加速静态资源和文件访问</li>
+                        <li>定期清理缩略图缓存释放空间</li>
+                        <li>使用 Redis 替代内存队列（多实例部署）</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

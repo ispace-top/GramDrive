@@ -33,14 +33,14 @@
         
         <div class="card" style="width: 100%; max-width: 400px; padding: 32px; text-align: left;">
             <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 24px;">初始化设置</h2>
-            <form id="setup-form" onsubmit="return false;">
+            <form id="setup-form" onsubmit="submitSetup(); return false;">
                 <div class="input-group">
                     <label class="input-label">设置管理员密码</label>
                     <input type="password" class="input-field" name="password" id="password" placeholder="请输入强密码" required autofocus>
                     <div class="text-sm text-muted mt-4">此密码将用于登录管理控制台。</div>
                 </div>
-                
-                <button type="button" class="btn btn-primary" style="width: 100%;" onclick="submitSetup()">
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
                     完成设置
                 </button>
             </form>

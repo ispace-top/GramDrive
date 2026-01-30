@@ -229,27 +229,63 @@ class DownloadService:
 
                     bytes_downloaded = 0
                     last_update_time = time.time()
+                    download_start_time = time.time()
 
                     # 使用共享的 HTTP 客户端，而不是创建新的
-                    client = self.http_client if self.http_client else httpx.AsyncClient(timeout=300.0)
+                    client = self.http_client if self.http_client else httpx.AsyncClient(timeout=3600.0)
                     download_success = False
                     try:
+                        logger.info(f"【下载服务】开始下载文件: {filename}，大小: {total_size / 1024 / 1024:.2f}MB，URL: {download_url[:100]}...")
+
                         async with client.stream("GET", download_url) as response:
                             response.raise_for_status()
+
+                            # 检查响应内容长度
+                            content_length = response.headers.get('content-length')
+                            if content_length:
+                                expected_size = int(content_length)
+                                logger.info(f"【下载服务】服务器返回文件大小: {expected_size / 1024 / 1024:.2f}MB")
+                                if expected_size != total_size:
+                                    logger.warning(f"【下载服务】文件大小不匹配！数据库: {total_size}, 服务器: {expected_size}")
+
                             with open(local_filepath, "wb") as f:
+                                chunk_count = 0
                                 async for chunk in response.aiter_bytes():
                                     f.write(chunk)
                                     bytes_downloaded += len(chunk)
+                                    chunk_count += 1
 
                                     # Throttle progress updates to about once per second
                                     current_time = time.time()
                                     if current_time - last_update_time > 1:
+                                        elapsed = current_time - download_start_time
+                                        speed = bytes_downloaded / elapsed / 1024 / 1024  # MB/s
+                                        progress_pct = (bytes_downloaded / total_size * 100) if total_size > 0 else 0
+
+                                        logger.debug(f"【下载服务】下载进度: {filename} - {progress_pct:.1f}% ({bytes_downloaded / 1024 / 1024:.2f}MB / {total_size / 1024 / 1024:.2f}MB) 速度: {speed:.2f}MB/s")
+
                                         await progress_event_queue.put({
                                             "task_id": task_id, "file_id": file_id, "status": "downloading",
                                             "downloaded": bytes_downloaded, "total_size": total_size, "progress": (bytes_downloaded / total_size) if total_size > 0 else 0
                                         })
                                         last_update_time = current_time
+
                         download_success = True
+                        elapsed_total = time.time() - download_start_time
+                        avg_speed = bytes_downloaded / elapsed_total / 1024 / 1024 if elapsed_total > 0 else 0
+                        logger.info(f"【下载服务】文件下载完成: {filename}，耗时: {elapsed_total:.1f}秒，平均速度: {avg_speed:.2f}MB/s，总块数: {chunk_count}")
+
+                    except httpx.TimeoutException as e:
+                        elapsed = time.time() - download_start_time
+                        logger.error(f"【下载服务】下载超时: {filename}，已下载: {bytes_downloaded / 1024 / 1024:.2f}MB / {total_size / 1024 / 1024:.2f}MB，耗时: {elapsed:.1f}秒，错误: {e}")
+                        raise Exception(f"下载超时（{elapsed:.0f}秒）: {e}")
+                    except httpx.HTTPStatusError as e:
+                        logger.error(f"【下载服务】HTTP错误: {filename}，状态码: {e.response.status_code}，错误: {e}")
+                        raise Exception(f"HTTP错误 {e.response.status_code}: {e}")
+                    except Exception as e:
+                        elapsed = time.time() - download_start_time
+                        logger.error(f"【下载服务】下载异常: {filename}，已下载: {bytes_downloaded / 1024 / 1024:.2f}MB，耗时: {elapsed:.1f}秒，错误类型: {type(e).__name__}，详情: {e}")
+                        raise
                     finally:
                         # 如果使用了临时客户端，需要关闭它
                         if not self.http_client and client:

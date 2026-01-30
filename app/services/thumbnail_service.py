@@ -49,16 +49,25 @@ class ThumbnailService:
     async def generate_thumbnail(
         self,
         file_id: str,
-        download_url: str,
+        source: str,
         size: str = "medium",
-        client: httpx.AsyncClient | None = None
+        client: httpx.AsyncClient | None = None,
+        is_local_file: bool = False
     ) -> bytes | None:
-        """生成并缓存缩略图"""
+        """生成并缓存缩略图
+
+        Args:
+            file_id: 文件ID
+            source: 下载URL（is_local_file=False）或本地文件路径（is_local_file=True）
+            size: 缩略图尺寸
+            client: HTTP客户端（仅当is_local_file=False时使用）
+            is_local_file: 是否为本地文件路径
+        """
 
         # 检查尺寸是否有效
         if size not in self.sizes:
             logger.warning(f"无效的缩略图尺寸: {size}，使用默认值 'medium'")
-            size = "中"
+            size = "medium"
 
         target_size = self.sizes[size]
         cache_path = self._get_cache_path(file_id, size)
@@ -68,36 +77,44 @@ class ThumbnailService:
         if cached:
             return cached
 
-        # 下载原图
         try:
-            close_client = False
-            if client is None:
-                client = httpx.AsyncClient(timeout=30.0)
-                close_client = True
+            # 如果是本地文件，直接读取
+            if is_local_file:
+                logger.info(f"从本地文件生成缩略图: {file_id} ({size})")
+                try:
+                    with open(source, 'rb') as f:
+                        image_data = f.read()
+                except Exception as e:
+                    logger.error(f"读取本地文件失败: {source}, {e}")
+                    return None
+            else:
+                # 从URL下载原图
+                close_client = False
+                if client is None:
+                    client = httpx.AsyncClient(timeout=30.0)
+                    close_client = True
 
-            try:
-                logger.info(f"开始生成缩略图: {file_id} ({size})")
-                response = await client.get(download_url)
-                response.raise_for_status()
+                try:
+                    logger.info(f"从URL生成缩略图: {file_id} ({size})")
+                    response = await client.get(source)
+                    response.raise_for_status()
+                    image_data = response.content
+                finally:
+                    if close_client:
+                        await client.aclose()
 
-                image_data = response.content
+            # 生成缩略图
+            thumbnail_data = self._create_thumbnail(image_data, target_size)
 
-                # 生成缩略图
-                thumbnail_data = self._create_thumbnail(image_data, target_size)
-
-                if thumbnail_data:
-                    # 保存到缓存
-                    with open(cache_path, 'wb') as f:
-                        f.write(thumbnail_data)
-                    logger.info(f"缩略图已缓存: {cache_path}")
-                    return thumbnail_data
-
-            finally:
-                if close_client:
-                    await client.aclose()
+            if thumbnail_data:
+                # 保存到缓存
+                with open(cache_path, 'wb') as f:
+                    f.write(thumbnail_data)
+                logger.info(f"缩略图已缓存: {cache_path}")
+                return thumbnail_data
 
         except httpx.RequestError as e:
-            logger.error(f"下载图片失败: {download_url}, {e}")
+            logger.error(f"下载图片失败: {source}, {e}")
             return None
         except Exception as e:
             logger.error(f"生成缩略图失败: {file_id}, {e}", exc_info=True)

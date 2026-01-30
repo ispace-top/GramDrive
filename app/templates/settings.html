@@ -117,9 +117,9 @@ function initData() {
             for (let k in data.cfg) {
                 const el = document.getElementsByName(k)[0];
                 if (el) {
-                    if (k === 'BOT_TOKEN' && data.cfg.BOT_TOKEN_SET) {
-                        el.placeholder = '已配置 (********** Keep current if empty)';
-                        // 不填充实际值
+                    if (k === 'BOT_TOKEN') {
+                        // 管理员登录后显示完整 Token
+                        el.value = data.cfg[k] || '';
                     } else if (k === 'PICGO_API_KEY' && data.cfg.PICGO_API_KEY_SET) {
                         el.placeholder = '已配置 (********** Keep current if empty)';
                     } else if (k === 'PASS_WORD_SET') {
