@@ -70,7 +70,8 @@ class DownloadService:
             await asyncio.sleep(settings.get('polling_interval', 60)) # Poll every minute by default
 
     async def _get_download_settings(self) -> dict[str, Any]:
-        settings = database.get_app_settings_from_db()
+        # 在线程池中执行同步数据库调用
+        settings = await asyncio.to_thread(database.get_app_settings_from_db)
         return {
             'enabled': settings.get('AUTO_DOWNLOAD_ENABLED', False),
             'download_dir': settings.get('DOWNLOAD_DIR', '/app/downloads'),
@@ -85,7 +86,8 @@ class DownloadService:
     async def _fetch_and_queue_files_for_download(self, settings: dict[str, Any]):
         logger.info("【下载服务】正在获取待下载文件...")
         # 下载服务需要扫描所有文件（包括未下载的），所以使用 local_only=False
-        all_files = database.get_all_files(local_only=False)
+        # 使用 asyncio.to_thread 在线程池中执行同步的数据库调用，避免阻塞事件循环
+        all_files = await asyncio.to_thread(database.get_all_files, local_only=False)
 
         # Filter files that are not yet local and match criteria
         files_to_download = []
