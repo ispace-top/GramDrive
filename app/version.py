@@ -2,7 +2,7 @@
 GramDrive 版本信息
 """
 
-__version__ = "1.0.0"
+__version__ = "0.9.0"
 __author__ = "ispace"
 __email__ = "kindom162@gmail.com"
 __github__ = "https://github.com/ispace-top"
